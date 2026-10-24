@@ -1,0 +1,292 @@
+// ========================================================
+// Prisma Schema - Cloud Stock Management
+// Database: PostgreSQL 16
+// ========================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------
+// ENUMS
+// --------------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+
+  @@map("role_enum")
+}
+
+enum StockDocType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+  TRANSFER
+
+  @@map("stock_doc_type_enum")
+}
+
+enum StockDocStatus {
+  DRAFT
+  PENDING
+  POSTED
+  REJECTED
+  CANCELLED
+
+  @@map("stock_doc_status_enum")
+}
+
+enum ImportJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+
+  @@map("import_job_status_enum")
+}
+
+// --------------------------------------------------------
+// MODELS
+// --------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(STAFF)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  createdDocuments  StockDocument[] @relation("DocumentCreator")
+  approvedDocuments StockDocument[] @relation("DocumentApprover")
+  auditLogs         AuditLog[]      @relation("AuditActor")
+  importJobs        ImportJob[]     @relation("ImportJobCreator")
+
+  @@map("users")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String    @id @default(uuid()) @db.Uuid
+  categoryId  String    @map("category_id") @db.Uuid
+  name        String
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  category Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images   ProductImage[]
+  variants ProductVariant[]
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  url       String
+  publicId  String   @map("public_id")
+  altText   String?  @map("alt_text")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id        String    @id @default(uuid()) @db.Uuid
+  productId String    @map("product_id") @db.Uuid
+  sku       String    @unique
+  name      String
+  price     Decimal   @map("price") @db.Decimal(14, 2)
+  costPrice Decimal?  @map("cost_price") @db.Decimal(14, 2)
+  isActive  Boolean   @default(true) @map("is_active")
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations (INVARIANT: NO quantity column in variant!)
+  product           Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inventoryBalances InventoryBalance[]
+  stockDocumentItems StockDocumentItem[]
+  stockMovements    StockMovement[]
+
+  @@index([productId])
+  @@index([sku])
+  @@map("product_variants")
+}
+
+model Warehouse {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  inventoryBalances      InventoryBalance[]
+  sourceDocuments        StockDocument[]    @relation("SourceWarehouse")
+  destinationDocuments   StockDocument[]    @relation("DestinationWarehouse")
+  stockMovements         StockMovement[]
+
+  @@map("warehouses")
+}
+
+model InventoryBalance {
+  warehouseId  String   @map("warehouse_id") @db.Uuid
+  variantId    String   @map("variant_id") @db.Uuid
+  quantity     Int      @default(0)
+  minThreshold Int      @default(5) @map("min_threshold")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations (Composite primary key warehouseId + variantId)
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@id([warehouseId, variantId])
+  @@index([variantId])
+  @@map("inventory_balances")
+}
+
+model StockDocument {
+  id                     String         @id @default(uuid()) @db.Uuid
+  documentCode           String         @unique @map("document_code")
+  type                   StockDocType
+  status                 StockDocStatus @default(DRAFT)
+  sourceWarehouseId      String?        @map("source_warehouse_id") @db.Uuid
+  destinationWarehouseId String?        @map("destination_warehouse_id") @db.Uuid
+  note                   String?
+  createdById            String         @map("created_by") @db.Uuid
+  approvedById           String?        @map("approved_by") @db.Uuid
+  approvedAt             DateTime?      @map("approved_at") @db.Timestamptz(6)
+  postedAt               DateTime?      @map("posted_at") @db.Timestamptz(6)
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  createdBy            User                @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy           User?               @relation("DocumentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  sourceWarehouse      Warehouse?          @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  destinationWarehouse Warehouse?          @relation("DestinationWarehouse", fields: [destinationWarehouseId], references: [id], onDelete: Restrict)
+  items                StockDocumentItem[]
+
+  @@index([documentCode])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("stock_documents")
+}
+
+model StockDocumentItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  variantId  String   @map("variant_id") @db.Uuid
+  quantity   Int
+  unitPrice  Decimal? @map("unit_price") @db.Decimal(14, 2)
+
+  // Relations
+  document       StockDocument   @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  variant        ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  stockMovements StockMovement[]
+
+  @@unique([documentId, variantId])
+  @@index([documentId])
+  @@index([variantId])
+  @@map("stock_document_items")
+}
+
+model StockMovement {
+  id             String   @id @default(uuid()) @db.Uuid
+  documentItemId String   @map("document_item_id") @db.Uuid
+  warehouseId    String   @map("warehouse_id") @db.Uuid
+  variantId      String   @map("variant_id") @db.Uuid
+  delta          Int
+  quantityBefore Int      @map("quantity_before")
+  quantityAfter  Int      @map("quantity_after")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  documentItem StockDocumentItem @relation(fields: [documentItemId], references: [id], onDelete: Restrict)
+  warehouse    Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  variant      ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([documentItemId, warehouseId])
+  @@index([warehouseId, variantId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model ImportJob {
+  id               String          @id @default(uuid()) @db.Uuid
+  createdById      String          @map("created_by") @db.Uuid
+  status           ImportJobStatus @default(PENDING)
+  originalFilename String          @map("original_filename")
+  totalRows        Int             @default(0) @map("total_rows")
+  processedRows    Int             @default(0) @map("processed_rows")
+  failedRows       Int             @default(0) @map("failed_rows")
+  errorReportUrl   String?         @map("error_report_url")
+  queueJobId       String?         @map("queue_job_id")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt       DateTime?       @map("finished_at") @db.Timestamptz(6)
+
+  // Relations
+  createdBy User @relation("ImportJobCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+  @@map("import_jobs")
+}

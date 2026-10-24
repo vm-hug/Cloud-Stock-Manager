@@ -1,0 +1,36 @@
+{
+  "name": "cloud-stock-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Stock Management - Modular Monolith Monorepo",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@cloud-stock/api",
+    "dev:web": "npm run dev --workspace=@cloud-stock/web",
+    "build:shared": "npm run build --workspace=@cloud-stock/shared",
+    "build:api": "npm run build --workspace=@cloud-stock/api",
+    "build:web": "npm run build --workspace=@cloud-stock/web",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run prisma:generate --workspace=@cloud-stock/api",
+    "db:migrate": "npm run prisma:migrate --workspace=@cloud-stock/api",
+    "db:deploy": "npm run prisma:deploy --workspace=@cloud-stock/api",
+    "db:seed": "npm run prisma:seed --workspace=@cloud-stock/api",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "keywords": [
+    "inventory",
+    "stock-management",
+    "modular-monolith",
+    "typescript",
+    "prisma",
+    "postgres",
+    "redis"
+  ],
+  "author": "Cloud Stock Management Team",
+  "license": "UNLICENSED"
+}

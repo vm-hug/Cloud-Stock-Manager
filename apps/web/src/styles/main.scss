@@ -1,0 +1,157 @@
+// ========================================================
+// Cloud Stock Management - Global CSS Stylesheet
+// ========================================================
+
+@use './variables' as v;
+@use './mixins' as m;
+
+// --------------------------------------------------------
+// CSS Reset & Box Sizing
+// --------------------------------------------------------
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: v.$font-family-base;
+  font-size: v.$font-size-base;
+  line-height: v.$line-height-normal;
+  color: v.$text-primary;
+  background-color: v.$bg-body;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(v.$color-primary-600, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(v.$color-secondary-600, 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  @include m.custom-scrollbar();
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// --------------------------------------------------------
+// Global Typography
+// --------------------------------------------------------
+h1, h2, h3, h4, h5, h6 {
+  font-weight: v.$font-weight-bold;
+  line-height: v.$line-height-tight;
+  color: v.$text-primary;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: v.$font-size-3xl; }
+h2 { font-size: v.$font-size-2xl; }
+h3 { font-size: v.$font-size-xl; }
+h4 { font-size: v.$font-size-lg; }
+
+p {
+  color: v.$text-secondary;
+}
+
+code, kbd, samp, pre {
+  font-family: v.$font-family-mono;
+  font-size: 0.9em;
+}
+
+// --------------------------------------------------------
+// Global Form Controls (Baseline)
+// --------------------------------------------------------
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  transition: all v.$transition-fast;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: v.$text-primary;
+  background-color: v.$bg-surface;
+  border: 1px solid v.$border-subtle;
+  border-radius: v.$radius-md;
+  padding: v.$space-2 v.$space-3;
+  outline: none;
+  transition: border-color v.$transition-fast, box-shadow v.$transition-fast;
+
+  &:focus {
+    border-color: v.$color-primary-500;
+    box-shadow: 0 0 0 3px rgba(v.$color-primary-500, 0.25);
+  }
+
+  &::placeholder {
+    color: v.$text-muted;
+  }
+}
+
+// --------------------------------------------------------
+// Common Helper Classes
+// --------------------------------------------------------
+.card {
+  @include m.glass-panel(0.85, 20px);
+  border-radius: v.$radius-xl;
+  padding: v.$space-6;
+  box-shadow: v.$shadow-lg;
+  transition: transform v.$transition-fast, border-color v.$transition-fast;
+
+  &:hover {
+    border-color: v.$border-medium;
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-1;
+  padding: 0.25rem 0.625rem;
+  border-radius: v.$radius-full;
+  font-size: v.$font-size-xs;
+  font-weight: v.$font-weight-semibold;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+
+  &--draft {
+    background: v.$status-draft-bg;
+    color: v.$status-draft-text;
+    border: 1px solid rgba(v.$color-neutral-500, 0.2);
+  }
+
+  &--pending {
+    background: v.$status-pending-bg;
+    color: v.$status-pending-text;
+    border: 1px solid rgba(v.$color-warning-500, 0.3);
+  }
+
+  &--posted {
+    background: v.$status-posted-bg;
+    color: v.$status-posted-text;
+    border: 1px solid rgba(v.$color-success-500, 0.3);
+  }
+
+  &--rejected {
+    background: v.$status-rejected-bg;
+    color: v.$status-rejected-text;
+    border: 1px solid rgba(v.$color-danger-500, 0.3);
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@cloud-stock/shared",
+  "version": "1.0.0",
+  "description": "Shared types, DTOs, schemas and constants for Cloud Stock Management",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
