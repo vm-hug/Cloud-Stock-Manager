@@ -14,7 +14,7 @@ Cloud Stock Management is built as a **Modular Monolith** deployed as a single u
 | Node.js / Express API (Modular Monolith)                                          |
 |                                                                                   |
 |  +--------------------+  +--------------------+  +--------------------+           |
-|  |    Auth Module     |  |   Catalog Module   |  |  Inventory Module  |  ...      |
+|  |    Auth Module     |  |   Users Module     |  |   Audit Module     |  ...      |
 |  | routes, controller |  | routes, controller |  | routes, controller |           |
 |  | service, repo, z   |  | service, repo, z   |  | service, repo, z   |           |
 |  +---------+----------+  +---------+----------+  +---------+----------+           |
@@ -47,7 +47,37 @@ Each backend module in `apps/api/src/modules/<module_name>/` follows a strict 5-
 
 ---
 
-## 3. Core Database Invariants & Inventory Concurrency Strategy
+## 3. Authentication & Session Security Architecture (Phase 2)
+
+```
+   Client Browser                        Express API Server                   PostgreSQL 16
+        |                                       |                                    |
+        |--- 1. POST /login ------------------->|                                    |
+        |    (email, password)                  |--- 2. bcrypt verify -------------->|
+        |                                       |--- 3. Create Session ------------->|
+        |<-- 4. Set HttpOnly Cookie ------------|       (store SHA-256 hash)         |
+        |    + Return short-lived Access Token -|                                    |
+        |                                       |                                    |
+        |--- 5. API Request (Bearer Token) ---->|                                    |
+        |                                       |--- 6. Verify JWT & Session ------->|
+        |<-- 7. Response Data ------------------|                                    |
+        |                                       |                                    |
+        |--- 8. POST /refresh (Cookie) -------->|                                    |
+        |                                       |--- 9. Rotate Token in Session ---->|
+        |<-- 10. Set New Rotated Cookie --------|       (Invalidate old hash)        |
+        |    + Return New Access Token ---------|                                    |
+```
+
+### Key Security Invariants:
+1. **Refresh Token Rotation:** Every refresh operation issues a brand new token and invalidates the previous token hash atomically.
+2. **Token Reuse Detection:** If an already-rotated token hash is presented, the system immediately flags a replay attack and revokes the **entire token family**, locking out the attacker.
+3. **Storage Security:** Raw refresh tokens are never persisted in PostgreSQL or Redis; only cryptographically strong SHA-256 hashes are recorded.
+4. **Immediate Session Invalidation:** When an administrator locks/deactivates an account or resets a user password, all active sessions for that user ID are marked `is_revoked = true` in PostgreSQL, instantly terminating any ongoing access.
+5. **Last Administrator Protection:** The system guarantees at the database query layer that the final active `ADMIN` account cannot be deactivated or demoted to a lower role.
+
+---
+
+## 4. Core Database Invariants & Inventory Concurrency Strategy
 
 1. **Physical Balance Isolation:**
    `inventory_balances` table is the sole source of inventory truth with composite primary key `(warehouse_id, variant_id)`. `ProductVariant` deliberately contains no `quantity` column.

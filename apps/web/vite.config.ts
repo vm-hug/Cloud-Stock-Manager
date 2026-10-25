@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@cloud-stock/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
   server: {

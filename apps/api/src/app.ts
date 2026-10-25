@@ -1,9 +1,15 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import { errorHandler } from './common/middleware/errorHandler';
 import { NotFoundError } from './common/errors/appError';
+import { authRoutes } from './modules/auth/auth.routes';
+import { usersRoutes } from './modules/users/users.routes';
+import { auditRoutes } from './modules/audit/audit.routes';
+import { systemRoutes } from './modules/system/system.routes';
+import { systemController } from './modules/system/system.controller';
 
 export function createApp(): Application {
   const app = express();
@@ -20,8 +26,13 @@ export function createApp(): Application {
   // Parsing Middleware
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
 
-  // Healthcheck Endpoint
+  // Cloud Health Probes (Render / Kubernetes)
+  app.get('/api/health/live', systemController.getLive);
+  app.get('/api/health/ready', systemController.getReady);
+
+  // Legacy/Basic Healthcheck Endpoint (Phase 1 compatibility)
   app.get('/api/health', (_req: Request, res: Response) => {
     res.status(200).json({
       success: true,
@@ -33,6 +44,12 @@ export function createApp(): Application {
       },
     });
   });
+
+  // API v1 Modules (Modular Monolith)
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/users', usersRoutes);
+  app.use('/api/v1/audit-logs', auditRoutes);
+  app.use('/api/v1/system', systemRoutes);
 
   // Catch-all 404 for undefined routes
   app.use((_req: Request, _res: Response, next: NextFunction) => {

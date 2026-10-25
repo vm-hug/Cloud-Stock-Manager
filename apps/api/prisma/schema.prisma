@@ -57,22 +57,46 @@ enum ImportJobStatus {
 // --------------------------------------------------------
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String    @id @default(uuid()) @db.Uuid
   name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role     @default(STAFF)
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         Role      @default(STAFF)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  createdDocuments  StockDocument[] @relation("DocumentCreator")
-  approvedDocuments StockDocument[] @relation("DocumentApprover")
-  auditLogs         AuditLog[]      @relation("AuditActor")
-  importJobs        ImportJob[]     @relation("ImportJobCreator")
+  createdDocuments  StockDocument[]  @relation("DocumentCreator")
+  approvedDocuments StockDocument[]  @relation("DocumentApprover")
+  auditLogs         AuditLog[]       @relation("AuditActor")
+  importJobs        ImportJob[]      @relation("ImportJobCreator")
+  refreshSessions   RefreshSession[]
 
   @@map("users")
+}
+
+model RefreshSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  family     String    @map("family") @db.Uuid
+  isRevoked  Boolean   @default(false) @map("is_revoked")
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 model AuditLog {
@@ -82,6 +106,7 @@ model AuditLog {
   entityType String   @map("entity_type")
   entityId   String   @map("entity_id")
   metadata   Json?
+  ipAddress  String?  @map("ip_address")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations

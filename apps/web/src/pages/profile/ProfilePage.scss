@@ -1,0 +1,113 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-6;
+  max-width: 800px;
+}
+
+.profile-card {
+  @include m.glass-panel(0.85, 20px);
+  border-radius: v.$radius-2xl;
+  padding: v.$space-8;
+  box-shadow: v.$shadow-lg;
+
+  .profile-top {
+    display: flex;
+    align-items: center;
+    gap: v.$space-5;
+    padding-bottom: v.$space-6;
+    border-bottom: 1px solid v.$border-subtle;
+    margin-bottom: v.$space-6;
+
+    .large-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, v.$color-primary-600, v.$color-secondary-600);
+      color: #fff;
+      font-size: 1.75rem;
+      font-weight: bold;
+      @include m.flex-center;
+      box-shadow: 0 4px 16px rgba(v.$color-primary-600, 0.4);
+    }
+
+    .user-titles {
+      .name {
+        font-size: v.$font-size-2xl;
+        font-weight: v.$font-weight-extrabold;
+        color: v.$text-primary;
+        margin-bottom: 0.25rem;
+      }
+      .email {
+        color: v.$text-secondary;
+        font-size: v.$font-size-sm;
+      }
+    }
+  }
+
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: v.$space-4;
+    margin-bottom: v.$space-8;
+
+    .detail-item {
+      padding: v.$space-4;
+      background: rgba(v.$bg-body, 0.5);
+      border: 1px solid v.$border-subtle;
+      border-radius: v.$radius-lg;
+
+      .label {
+        font-size: v.$font-size-xs;
+        color: v.$text-muted;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+      }
+
+      .value {
+        font-size: v.$font-size-base;
+        font-weight: v.$font-weight-semibold;
+        color: v.$text-primary;
+      }
+    }
+  }
+
+  .security-section {
+    padding-top: v.$space-6;
+    border-top: 1px solid v.$border-subtle;
+
+    .section-title {
+      font-size: v.$font-size-base;
+      font-weight: v.$font-weight-bold;
+      margin-bottom: v.$space-2;
+    }
+
+    .section-desc {
+      font-size: v.$font-size-sm;
+      color: v.$text-secondary;
+      margin-bottom: v.$space-4;
+    }
+
+    .revoke-all-btn {
+      padding: 0.625rem 1.25rem;
+      background: rgba(v.$color-danger-500, 0.15);
+      border: 1px solid rgba(v.$color-danger-500, 0.3);
+      color: #f87171;
+      border-radius: v.$radius-lg;
+      font-size: v.$font-size-sm;
+      font-weight: v.$font-weight-semibold;
+      display: inline-flex;
+      align-items: center;
+      gap: v.$space-2;
+
+      &:hover {
+        background: rgba(v.$color-danger-500, 0.25);
+        color: #fca5a5;
+      }
+    }
+  }
+}

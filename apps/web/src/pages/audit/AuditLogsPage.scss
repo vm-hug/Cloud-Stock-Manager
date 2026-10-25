@@ -1,0 +1,83 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.audit-page {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-6;
+}
+
+.audit-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: v.$radius-sm;
+  font-size: 0.7rem;
+  font-weight: v.$font-weight-bold;
+  letter-spacing: 0.04em;
+  font-family: v.$font-family-mono;
+
+  &.LOGIN_SUCCESS {
+    background: rgba(v.$color-success-500, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(v.$color-success-500, 0.3);
+  }
+
+  &.LOGIN_FAILED {
+    background: rgba(v.$color-danger-500, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(v.$color-danger-500, 0.3);
+  }
+
+  &.CREATE_USER {
+    background: rgba(v.$color-primary-500, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(v.$color-primary-500, 0.3);
+  }
+
+  &.CHANGE_USER_ROLE {
+    background: rgba(v.$color-warning-500, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(v.$color-warning-500, 0.3);
+  }
+
+  &.DEACTIVATE_USER {
+    background: rgba(v.$color-danger-500, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(v.$color-danger-500, 0.4);
+  }
+
+  &.ACTIVATE_USER {
+    background: rgba(v.$color-success-500, 0.2);
+    color: #86efac;
+    border: 1px solid rgba(v.$color-success-500, 0.4);
+  }
+
+  &.RESET_USER_PASSWORD {
+    background: rgba(v.$color-warning-500, 0.2);
+    color: #fde047;
+    border: 1px solid rgba(v.$color-warning-500, 0.4);
+  }
+
+  &.LOGOUT {
+    background: rgba(v.$color-neutral-500, 0.15);
+    color: v.$text-secondary;
+    border: 1px solid rgba(v.$color-neutral-500, 0.3);
+  }
+}
+
+.metadata-code {
+  font-family: v.$font-family-mono;
+  font-size: 0.75rem;
+  background: rgba(v.$bg-body, 0.8);
+  border: 1px solid v.$border-subtle;
+  padding: 0.25rem 0.5rem;
+  border-radius: v.$radius-sm;
+  color: #cbd5e1;
+  max-width: 280px;
+  @include m.text-truncate;
+  cursor: pointer;
+
+  &:hover {
+    border-color: v.$color-primary-500;
+  }
+}
