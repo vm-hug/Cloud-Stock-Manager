@@ -10,6 +10,9 @@ import { UsersPage } from './pages/users/UsersPage';
 import { AuditLogsPage } from './pages/audit/AuditLogsPage';
 import { ProfilePage } from './pages/profile/ProfilePage';
 import { SystemHealthPage } from './pages/system/SystemHealthPage';
+import { CategoriesPage } from './pages/categories/CategoriesPage';
+import { ProductsPage } from './pages/products/ProductsPage';
+import { ProductDetailPage } from './pages/products/ProductDetailPage';
 import { Role } from '@cloud-stock/shared';
 
 export const App: React.FC = () => {
@@ -26,6 +29,11 @@ export const App: React.FC = () => {
             <Route element={<AppLayout />}>
               {/* Profile accessible to all authenticated roles */}
               <Route path="/profile" element={<ProfilePage />} />
+
+              {/* Catalog & Products accessible to ADMIN, MANAGER, STAFF */}
+              <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
 
               {/* Staff Directory accessible to ADMIN & MANAGER */}
               <Route element={<RoleRoute allowedRoles={[Role.ADMIN, Role.MANAGER]} />}>

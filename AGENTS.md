@@ -145,6 +145,10 @@ Các quy tắc sau đây là **BẤT BIẾN BẮT BUỘC**, không được phé
     - Hai yêu cầu xuất kho đồng thời đều yêu cầu xuất 4 sản phẩm.
     - Kết quả bắt buộc: Chỉ duy nhất 1 yêu cầu thành công, yêu cầu còn lại bị từ chối do không đủ tồn kho.
     - Tồn kho cuối cùng phải bằng 1 (`5 - 4 = 1`). Không được xảy ra tình trạng tồn âm hoặc trừ hai lần sai lệch.
+25. **Bất biến SKU và Lịch sử kho:** Không cho phép sửa đổi mã `sku` của `ProductVariant` một khi đã phát sinh bản ghi `stock_movements`.
+26. **Chống xóa SKU còn tồn kho:** Không cho phép soft-delete hoặc vô hiệu hóa `ProductVariant` nếu tổng số lượng tồn kho (`inventory_balances`) đang lớn hơn 0.
+27. **Duy nhất ảnh đại diện (Single Primary Image):** Mỗi sản phẩm có tối đa 1 ảnh primary, được bảo vệ ở tầng cơ sở dữ liệu bằng PostgreSQL Partial Unique Index (`CREATE UNIQUE INDEX ON product_images (product_id) WHERE is_primary = true`). Thao tác đổi ảnh chính hoặc xóa ảnh chính phải chạy trong interactive transaction.
+28. **Chống vô hiệu hóa Category có sản phẩm active:** Không cho phép vô hiệu hóa danh mục (`categories.is_active = false`) khi danh mục đó vẫn còn chứa các sản phẩm đang hoạt động (`is_active = true, deleted_at IS NULL`).
 
 ---
 

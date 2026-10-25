@@ -4,6 +4,7 @@
 
 ```mermaid
 erDiagram
+    users ||--o{ refresh_sessions : "maintains"
     users ||--o{ audit_logs : "creates"
     users ||--o{ stock_documents : "creates / approves"
     users ||--o{ import_jobs : "triggers"
@@ -11,6 +12,7 @@ erDiagram
     categories ||--o{ products : "contains"
     products ||--o{ product_images : "has"
     products ||--o{ product_variants : "has"
+    products ||--o{ media_deletion_jobs : "cleans"
 
     warehouses ||--o{ inventory_balances : "holds"
     warehouses ||--o{ stock_documents : "source / dest"
@@ -30,8 +32,23 @@ erDiagram
         varchar password_hash
         role_enum role
         boolean is_active
+        timestamptz last_login_at
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    refresh_sessions {
+        uuid id PK
+        uuid user_id FK
+        varchar token_hash UK
+        uuid family
+        boolean is_revoked
+        timestamptz revoked_at
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz last_used_at
+        varchar ip_address
+        varchar user_agent
     }
 
     categories {
@@ -56,15 +73,38 @@ erDiagram
         timestamptz updated_at
     }
 
+    product_images {
+        uuid id PK
+        uuid product_id FK
+        text url
+        text public_id
+        text alt_text
+        integer sort_order
+        boolean is_primary "PARTIAL UNIQUE (product_id WHERE is_primary=true)"
+        timestamptz created_at
+    }
+
     product_variants {
         uuid id PK
         uuid product_id FK
         varchar sku UK
         varchar name
-        numeric price
-        numeric cost_price
+        numeric price "CHECK >= 0"
+        numeric cost_price "CHECK IS NULL OR >= 0"
+        jsonb attributes
         boolean is_active
         timestamptz deleted_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    media_deletion_jobs {
+        uuid id PK
+        text public_id
+        uuid product_id FK
+        varchar status
+        integer retry_count
+        text error
         timestamptz created_at
         timestamptz updated_at
     }
@@ -128,6 +168,7 @@ erDiagram
         varchar entity_type
         varchar entity_id
         jsonb metadata
+        varchar ip_address
         timestamptz created_at
     }
 
@@ -153,10 +194,12 @@ erDiagram
 | Table Name | Primary Key | Critical Constraints |
 | :--- | :--- | :--- |
 | `users` | `id` (UUID) | `email` UNIQUE |
+| `refresh_sessions` | `id` (UUID) | `token_hash` UNIQUE, index on `family` |
 | `categories` | `id` (UUID) | `slug` UNIQUE |
 | `products` | `id` (UUID) | `slug` UNIQUE, Soft delete via `deleted_at` |
-| `product_images` | `id` (UUID) | Cascade delete with parent `Product` only |
-| `product_variants` | `id` (UUID) | `sku` UNIQUE, **NO quantity column** |
+| `product_images` | `id` (UUID) | PARTIAL UNIQUE `(product_id WHERE is_primary=true)` |
+| `product_variants` | `id` (UUID) | `sku` UNIQUE, `CHECK (price >= 0)`, `CHECK (cost_price IS NULL OR cost_price >= 0)`, **NO quantity column** |
+| `media_deletion_jobs` | `id` (UUID) | Index on `status` |
 | `warehouses` | `id` (UUID) | `code` UNIQUE |
 | `inventory_balances` | `(warehouse_id, variant_id)` | `CHECK ("quantity" >= 0)`, `CHECK ("min_threshold" >= 0)` |
 | `stock_documents` | `id` (UUID) | `document_code` UNIQUE, `CHECK (TRANSFER rule)` |
@@ -164,3 +207,4 @@ erDiagram
 | `stock_movements` | `id` (UUID) | UNIQUE `(document_item_id, warehouse_id)`, `CHECK ("delta" <> 0)`, non-negative balances |
 | `audit_logs` | `id` (UUID) | Indexes on `(entity_type, entity_id)`, `actor_id`, `created_at` |
 | `import_jobs` | `id` (UUID) | Indexes on `created_by`, `status`, `created_at` |
+

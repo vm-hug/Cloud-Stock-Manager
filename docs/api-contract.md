@@ -69,18 +69,40 @@ All HTTP endpoints return responses structured with the standard ApiResponse env
 ### 3.4 Security Audit Logs Module (`/api/v1/audit-logs`)
 - `GET /api/v1/audit-logs`: Immutable query of compliance logs with pagination and action filtering (**ADMIN only**).
 
+### 3.5 Categories Module (`/api/v1/categories`)
+- `GET   /api/v1/categories`: Paginated list of product categories with search and active status filter (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/categories/:id`: Get category details and product counts (**ADMIN, MANAGER, STAFF**).
+- `POST  /api/v1/categories`: Create new product category with slug normalization and conflict detection (**ADMIN, MANAGER**).
+- `PATCH /api/v1/categories/:id`: Update category name, slug, description, or status (**ADMIN, MANAGER**).
+- `PATCH /api/v1/categories/:id/status`: Toggle category active status. Protected by invariant: cannot deactivate category containing active products (**ADMIN, MANAGER**).
+
+### 3.6 Products Module (`/api/v1/products`)
+- `GET    /api/v1/products`: List products with pagination, search, category filter, active/deleted filter, and sorting. Includes primary thumbnail and variant count (**ADMIN, MANAGER, STAFF**).
+- `GET    /api/v1/products/:id`: Get comprehensive product details with category, all variants, and media assets (**ADMIN, MANAGER, STAFF**).
+- `POST   /api/v1/products`: Create product. Requires an active category (**ADMIN, MANAGER**).
+- `PATCH  /api/v1/products/:id`: Update product info and description (**ADMIN, MANAGER**).
+- `DELETE /api/v1/products/:id`: Soft delete product (`is_active = false`, `deleted_at = NOW()`). Invariant: All variants, inventory balances, and historical stock movements are preserved (**ADMIN, MANAGER**).
+- `PATCH  /api/v1/products/:id/restore`: Restore soft-deleted product. Invariant: Associated category must be active (**ADMIN, MANAGER**).
+
+### 3.7 Product Variants & SKU Module (`/api/v1/products/:productId/variants` & `/api/v1/variants`)
+- `GET    /api/v1/products/:productId/variants`: List all SKU variants of a product with price, attributes, and stock balances (**ADMIN, MANAGER, STAFF**).
+- `POST   /api/v1/products/:productId/variants`: Create variant SKU. Invariants: SKU must be globally unique; non-negative price; no quantity column in variant (**ADMIN, MANAGER**).
+- `GET    /api/v1/variants/:id`: Get variant details by ID (**ADMIN, MANAGER, STAFF**).
+- `PATCH  /api/v1/variants/:id`: Update variant price, attributes, or SKU. Invariant: SKU code cannot be changed once stock movements exist (**ADMIN, MANAGER**).
+- `DELETE /api/v1/variants/:id`: Soft delete variant SKU. Invariant: Cannot deactivate/delete variant with positive inventory balance (**ADMIN, MANAGER**).
+- `PATCH  /api/v1/variants/:id/restore`: Restore soft-deleted variant SKU (**ADMIN, MANAGER**).
+
+### 3.8 Cloudinary Media Management Module (`/api/v1/products/:id/images`)
+- `GET    /api/v1/products/:id/images`: List product media assets ordered by primary first, then sortOrder (**ADMIN, MANAGER, STAFF**).
+- `POST   /api/v1/products/:id/images/sign`: Generate secure signed upload parameters for direct client upload to Cloudinary CDN. Validates 8 images limit and product namespace (**ADMIN, MANAGER**).
+- `POST   /api/v1/products/:id/images/confirm`: Confirm uploaded asset, verify against Cloudinary, and save to PostgreSQL. Enforces Single Primary Image invariant (**ADMIN, MANAGER**).
+- `PATCH  /api/v1/products/:id/images/:imageId`: Update image altText or display sortOrder (**ADMIN, MANAGER**).
+- `PATCH  /api/v1/products/:id/images/:imageId/primary`: Promote image to primary display. Automatically unsets existing primary image in transaction (**ADMIN, MANAGER**).
+- `DELETE /api/v1/products/:id/images/:imageId`: Remove image from database and destroy asset on Cloudinary CDN. Automatically promotes next image to primary if deleted image was primary (**ADMIN, MANAGER**).
+
 ---
 
-## 4. Planned Endpoint Specifications for Subsequent Phases (Catalog & Inventory)
-
-### Catalog Module (`/api/v1/catalog`) - Phase 3
-- `GET    /api/v1/catalog/categories`: List categories.
-- `POST   /api/v1/catalog/categories`: Create category (Admin/Manager).
-- `GET    /api/v1/catalog/products`: Paginated product list with search/filters.
-- `POST   /api/v1/catalog/products`: Create product with variants (Admin/Manager).
-- `GET    /api/v1/catalog/products/:id`: Get product details.
-- `PUT    /api/v1/catalog/products/:id`: Update product metadata (Admin/Manager).
-- `DELETE /api/v1/catalog/products/:id`: Soft delete product (Admin only).
+## 4. Planned Endpoint Specifications for Subsequent Phases (Inventory)
 
 ### Inventory Module (`/api/v1/inventory`) - Phase 4
 - `GET  /api/v1/inventory/balances`: Query current warehouse stock balances.

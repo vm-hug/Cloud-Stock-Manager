@@ -12,7 +12,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test": "tsx tests/phase2.test.ts"
+    "test:phase2": "tsx tests/phase2.test.ts",
+    "test:phase3": "tsx tests/phase3.test.ts",
+    "test": "tsx tests/phase2.test.ts && tsx tests/phase3.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -21,6 +23,7 @@
     "@cloud-stock/shared": "*",
     "@prisma/client": "^5.21.1",
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

@@ -89,3 +89,39 @@ Each backend module in `apps/api/src/modules/<module_name>/` follows a strict 5-
 
 3. **Cache Invalidation:**
    Redis caches are invalidated strictly **after** transaction commit, ensuring zero stale reads or ghost inventory states.
+
+---
+
+## 5. Catalog, Variant & Cloudinary Media Architecture (Phase 3)
+
+```
+   Client Browser                        Express API Server                  Cloudinary CDN
+        |                                       |                                    |
+        |--- 1. POST /images/sign ------------->|                                    |
+        |    (Request upload authorization)     |--- 2. Validate product & role      |
+        |                                       |--- 3. Generate HMAC SHA-1 sign --->|
+        |<-- 4. Return signed parameters -------|       (folder, timestamp, publicId)|
+        |                                       |                                    |
+        |--- 5. Direct Upload (FormData) ------------------------------------------->|
+        |       (file, signature, timestamp, public_id)                              |
+        |<-- 6. Asset metadata & secure_url -----------------------------------------|
+        |                                       |                                    |
+        |--- 7. POST /images/confirm ---------->|                                    |
+        |    (publicId, url, altText)           |--- 8. Verify asset & namespace     |
+        |                                       |--- 9. Save ProductImage in DB      |
+        |<-- 10. Confirmation & Primary Image --|                                    |
+```
+
+### Key Catalog & Media Invariants:
+1. **Direct Signed Upload Pattern:** Client uploads assets directly to Cloudinary CDN using ephemeral signed authorization from the backend, avoiding heavy binary transit or local filesystem storage on Render instances.
+2. **Namespace Isolation:** Uploads are strictly namespaced under `cloud-stock/products/:productId` to prevent asset impersonation or overwrites.
+3. **Single Primary Image Invariant:** Each product has at most 1 primary image enforced by a PostgreSQL partial unique index:
+   ```sql
+   CREATE UNIQUE INDEX "product_images_product_id_primary_unique"
+   ON "product_images" ("product_id") WHERE ("is_primary" = true);
+   ```
+4. **Primary Promotion / Demotion Transactions:** Setting an image as primary or deleting the active primary image uses a Prisma transaction to automatically demote existing primaries or promote the next image in sort order.
+5. **No Quantity in Variants:** Invariant preserved from Phase 1 — `product_variants` contains no quantity column. Stock balances reside solely in `inventory_balances`.
+6. **SKU Immutability upon Stock Movement:** A variant's SKU identifier cannot be altered once historical `stock_movements` have been recorded, preserving audit trail integrity.
+7. **Positive Stock Deletion Protection:** A variant with positive total inventory cannot be soft-deleted or deactivated until stock has been transferred or adjusted to zero.
+8. **Soft Delete Preservation:** Soft-deleting a product (`deleted_at = NOW()`) preserves all variants, images, and inventory balances intact so historical warehouse documents remain completely auditable.

@@ -10,6 +10,7 @@ import { usersRoutes } from './modules/users/users.routes';
 import { auditRoutes } from './modules/audit/audit.routes';
 import { systemRoutes } from './modules/system/system.routes';
 import { systemController } from './modules/system/system.controller';
+import catalogRoutes from './modules/catalog/catalog.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -50,6 +51,7 @@ export function createApp(): Application {
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/audit-logs', auditRoutes);
   app.use('/api/v1/system', systemRoutes);
+  app.use('/api/v1', catalogRoutes);
 
   // Catch-all 404 for undefined routes
   app.use((_req: Request, _res: Response, next: NextFunction) => {

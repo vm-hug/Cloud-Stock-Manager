@@ -161,6 +161,7 @@ model ProductImage {
   publicId  String   @map("public_id")
   altText   String?  @map("alt_text")
   sortOrder Int      @default(0) @map("sort_order")
+  isPrimary Boolean  @default(false) @map("is_primary")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
@@ -171,26 +172,41 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id        String    @id @default(uuid()) @db.Uuid
-  productId String    @map("product_id") @db.Uuid
-  sku       String    @unique
-  name      String
-  price     Decimal   @map("price") @db.Decimal(14, 2)
-  costPrice Decimal?  @map("cost_price") @db.Decimal(14, 2)
-  isActive  Boolean   @default(true) @map("is_active")
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id         String    @id @default(uuid()) @db.Uuid
+  productId  String    @map("product_id") @db.Uuid
+  sku        String    @unique
+  name       String
+  price      Decimal   @map("price") @db.Decimal(14, 2)
+  costPrice  Decimal?  @map("cost_price") @db.Decimal(14, 2)
+  attributes Json?     @default("{}") @map("attributes")
+  isActive   Boolean   @default(true) @map("is_active")
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations (INVARIANT: NO quantity column in variant!)
-  product           Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
-  inventoryBalances InventoryBalance[]
+  product            Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inventoryBalances  InventoryBalance[]
   stockDocumentItems StockDocumentItem[]
-  stockMovements    StockMovement[]
+  stockMovements     StockMovement[]
 
   @@index([productId])
   @@index([sku])
   @@map("product_variants")
+}
+
+model MediaDeletionJob {
+  id         String   @id @default(uuid()) @db.Uuid
+  publicId   String   @map("public_id")
+  productId  String?  @map("product_id") @db.Uuid
+  status     String   @default("PENDING")
+  retryCount Int      @default(0) @map("retry_count")
+  error      String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@map("media_deletion_jobs")
 }
 
 model Warehouse {

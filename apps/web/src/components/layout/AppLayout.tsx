@@ -9,6 +9,8 @@ import {
   LogOut,
   Boxes,
   Home,
+  Layers,
+  Package,
 } from 'lucide-react';
 import './AppLayout.scss';
 
@@ -23,6 +25,8 @@ export const AppLayout: React.FC = () => {
   };
 
   const getPageTitle = () => {
+    if (location.pathname.startsWith('/categories')) return 'Category Management';
+    if (location.pathname.startsWith('/products')) return 'Product Catalog & SKUs';
     if (location.pathname.startsWith('/users')) return 'Staff & User Management';
     if (location.pathname.startsWith('/audit-logs')) return 'Security Audit Trail';
     if (location.pathname.startsWith('/system/health')) return 'Cloud Infrastructure Health';
@@ -40,7 +44,7 @@ export const AppLayout: React.FC = () => {
           </div>
           <div>
             <div className="brand-name">Cloud Stock</div>
-            <div className="brand-phase">Phase 2 Security</div>
+            <div className="brand-phase">Phase 3 Catalog</div>
           </div>
         </div>
 
@@ -48,6 +52,18 @@ export const AppLayout: React.FC = () => {
           <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
             <Home size={18} />
             <span>Architecture Home</span>
+          </NavLink>
+
+          <div className="nav-label">Catalog & Products</div>
+
+          <NavLink to="/categories" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Layers size={18} />
+            <span>Categories</span>
+          </NavLink>
+
+          <NavLink to="/products" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Package size={18} />
+            <span>Products & SKUs</span>
           </NavLink>
 
           <div className="nav-label">Identity & Access</div>

@@ -46,6 +46,22 @@ export enum AuditAction {
   ACTIVATE_USER = 'ACTIVATE_USER',
   DEACTIVATE_USER = 'DEACTIVATE_USER',
   RESET_USER_PASSWORD = 'RESET_USER_PASSWORD',
+
+  // Phase 3 Catalog Audit Actions
+  CREATE_CATEGORY = 'CREATE_CATEGORY',
+  UPDATE_CATEGORY = 'UPDATE_CATEGORY',
+  CHANGE_CATEGORY_STATUS = 'CHANGE_CATEGORY_STATUS',
+  CREATE_PRODUCT = 'CREATE_PRODUCT',
+  UPDATE_PRODUCT = 'UPDATE_PRODUCT',
+  DELETE_PRODUCT = 'DELETE_PRODUCT',
+  RESTORE_PRODUCT = 'RESTORE_PRODUCT',
+  CREATE_VARIANT = 'CREATE_VARIANT',
+  UPDATE_VARIANT = 'UPDATE_VARIANT',
+  DELETE_VARIANT = 'DELETE_VARIANT',
+  RESTORE_VARIANT = 'RESTORE_VARIANT',
+  UPLOAD_PRODUCT_IMAGE = 'UPLOAD_PRODUCT_IMAGE',
+  SET_PRIMARY_IMAGE = 'SET_PRIMARY_IMAGE',
+  DELETE_PRODUCT_IMAGE = 'DELETE_PRODUCT_IMAGE',
 }
 
 // Standard API Response Envelope
@@ -125,4 +141,78 @@ export interface SystemHealthStatus {
     heapTotalMb: number;
     rssMb: number;
   };
+}
+
+// ========================================================
+// Phase 3 Catalog & Media Domain Types
+// ========================================================
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    products: number;
+  };
+}
+
+export interface ProductImage {
+  id: string;
+  productId: string;
+  url: string;
+  publicId: string;
+  altText: string | null;
+  sortOrder: number;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  name: string;
+  price: string | number;
+  costPrice?: string | number | null;
+  attributes?: Record<string, string> | null;
+  isActive: boolean;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  inventoryBalances?: Array<{
+    warehouseId: string;
+    quantity: number;
+  }>;
+}
+
+export interface Product {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isActive: boolean;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+  images?: ProductImage[];
+  variants?: ProductVariant[];
+  _count?: {
+    variants: number;
+    images?: number;
+  };
+}
+
+export interface CloudinarySignedParams {
+  signature: string;
+  timestamp: number;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
+  publicId: string;
 }

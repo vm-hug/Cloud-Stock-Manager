@@ -1,0 +1,148 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.products-page {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-6;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: v.$space-3;
+
+  .thumb-container {
+    width: 44px;
+    height: 44px;
+    border-radius: v.$radius-md;
+    background: rgba(v.$bg-surface, 0.8);
+    border: 1px solid v.$border-subtle;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .product-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumb-placeholder {
+      color: v.$text-muted;
+      opacity: 0.5;
+    }
+  }
+
+  .product-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    .product-name {
+      font-weight: v.$font-weight-semibold;
+      color: v.$text-primary;
+      transition: color v.$transition-fast;
+
+      &.clickable {
+        cursor: pointer;
+        &:hover {
+          color: v.$color-primary-400;
+        }
+      }
+    }
+
+    .slug-text {
+      font-size: 0.75rem;
+      color: v.$text-muted;
+    }
+  }
+}
+
+.category-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-1;
+  padding: 0.25rem 0.625rem;
+  border-radius: v.$radius-full;
+  background: rgba(v.$color-primary-500, 0.1);
+  color: v.$color-primary-400;
+  font-size: v.$font-size-xs;
+}
+
+.variant-count-pill {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: v.$radius-full;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: v.$font-size-xs;
+  color: v.$text-secondary;
+}
+
+.row-deleted {
+  opacity: 0.6;
+  background: rgba(v.$color-danger-500, 0.04) !important;
+}
+
+.status-pill.deleted {
+  background: rgba(v.$color-danger-500, 0.15);
+  color: v.$color-danger-400;
+}
+
+.action-buttons {
+  .icon-action-btn.view:hover {
+    color: v.$color-info-400;
+    border-color: v.$color-info-500;
+  }
+
+  .icon-action-btn.delete:hover {
+    color: v.$color-danger-400;
+    border-color: v.$color-danger-500;
+  }
+
+  .icon-action-btn.restore:hover {
+    color: v.$color-success-400;
+    border-color: v.$color-success-500;
+  }
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$space-4 v.$space-6;
+  border-top: 1px solid v.$border-subtle;
+  font-size: v.$font-size-sm;
+  color: v.$text-secondary;
+
+  .pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: v.$space-3;
+
+    .page-btn {
+      padding: 0.35rem 0.6rem;
+      border-radius: v.$radius-md;
+      background: rgba(v.$bg-surface, 0.6);
+      border: 1px solid v.$border-subtle;
+      color: v.$text-secondary;
+
+      &:hover:not(:disabled) {
+        color: v.$text-primary;
+        border-color: v.$color-primary-500;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    .page-current {
+      font-size: v.$font-size-xs;
+      color: v.$text-muted;
+    }
+  }
+}
