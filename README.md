@@ -1,7 +1,5 @@
 # Cloud Stock Management
 
-Modular Monolith stock management system built with Node.js, Express, React, PostgreSQL 16, Redis 7, and Prisma ORM.
-
 ## Getting Started
 
 1. Install dependencies:
