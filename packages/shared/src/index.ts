@@ -216,3 +216,115 @@ export interface CloudinarySignedParams {
   folder: string;
   publicId: string;
 }
+
+// --------------------------------------------------------
+// DOMAIN DATA TRANSFER OBJECTS (DTOs)
+// --------------------------------------------------------
+
+export interface CategoryDto {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductImageDto {
+  id: string;
+  productId: string;
+  url: string;
+  publicId: string;
+  altText?: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ProductVariantDto {
+  id: string;
+  productId: string;
+  sku: string;
+  name: string;
+  price: number;
+  costPrice?: number | null;
+  isActive: boolean;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductDto {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: CategoryDto;
+  images?: ProductImageDto[];
+  variants?: ProductVariantDto[];
+}
+
+export interface WarehouseDto {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryBalanceDto {
+  warehouseId: string;
+  variantId: string;
+  quantity: number;
+  minThreshold: number;
+  updatedAt: string;
+  warehouse?: WarehouseDto;
+  variant?: ProductVariantDto;
+}
+
+export interface StockDocumentItemDto {
+  id: string;
+  documentId: string;
+  variantId: string;
+  quantity: number;
+  unitPrice?: number | null;
+  variant?: ProductVariantDto;
+}
+
+export interface StockDocumentDto {
+  id: string;
+  documentCode: string;
+  type: StockDocType;
+  status: StockDocStatus;
+  sourceWarehouseId?: string | null;
+  destinationWarehouseId?: string | null;
+  note?: string | null;
+  createdById: string;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  postedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items?: StockDocumentItemDto[];
+  sourceWarehouse?: WarehouseDto;
+  destinationWarehouse?: WarehouseDto;
+}
+
+export interface StockMovementDto {
+  id: string;
+  documentItemId: string;
+  warehouseId: string;
+  variantId: string;
+  delta: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  createdAt: string;
+  warehouse?: WarehouseDto;
+  variant?: ProductVariantDto;
+}
