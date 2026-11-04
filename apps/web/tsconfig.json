@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@cloud-stock/shared": ["../../packages/shared/src"]
     }
   },
   "include": ["src"],

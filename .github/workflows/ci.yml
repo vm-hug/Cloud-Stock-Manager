@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, develop, feature/*]
+    branches: [main, develop, 'feature/**', 'feature/*']
   pull_request:
     branches: [main, develop]
 
@@ -73,6 +73,9 @@ jobs:
 
       - name: Run Seed Data
         run: npm run db:seed
+
+      - name: Build Shared Package
+        run: npm run build:shared
 
       - name: Run Monorepo Typecheck
         run: npm run typecheck
