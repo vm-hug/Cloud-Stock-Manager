@@ -1,0 +1,154 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.stock-document-create-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+
+  .page-header {
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: v.$text-secondary;
+      text-decoration: none;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+      &:hover { color: v.$text-primary; }
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: v.$text-primary;
+      margin: 0 0 0.25rem 0;
+    }
+    p {
+      color: v.$text-secondary;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+  }
+
+  .form-card {
+    @include m.card;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    .form-section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: v.$text-primary;
+      border-bottom: 1px solid v.$border-subtle;
+      padding-bottom: 0.5rem;
+      margin: 0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+
+      label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: v.$text-secondary;
+      }
+
+      input, select, textarea {
+        @include m.form-input;
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+    }
+  }
+
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+
+    th {
+      padding: 0.6rem 0.75rem;
+      color: v.$text-secondary;
+      text-align: left;
+      border-bottom: 1px solid v.$border-medium;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    td {
+      padding: 0.6rem 0.75rem;
+      vertical-align: middle;
+      border-bottom: 1px solid v.$border-subtle;
+
+      input, select {
+        @include m.form-input;
+        padding: 0.4rem 0.6rem;
+      }
+    }
+
+    .btn-delete-row {
+      background: transparent;
+      border: none;
+      color: v.$color-danger-400;
+      cursor: pointer;
+      padding: 0.35rem;
+      border-radius: 4px;
+      &:hover { background: rgba(v.$color-danger-500, 0.15); }
+    }
+  }
+
+  .items-actions {
+    display: flex;
+    justify-content: flex-start;
+    padding-top: 0.5rem;
+
+    .btn-add-item {
+      @include m.btn-secondary;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    border-top: 1px solid v.$border-subtle;
+    padding-top: 1rem;
+
+    .btn-cancel {
+      @include m.btn-secondary;
+      text-decoration: none;
+    }
+
+    .btn-submit {
+      @include m.btn-primary;
+    }
+  }
+
+  .error-banner {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    background: rgba(v.$color-danger-500, 0.15);
+    color: v.$color-danger-400;
+    font-size: 0.875rem;
+  }
+}

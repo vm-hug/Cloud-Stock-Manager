@@ -55,5 +55,6 @@ ehthumbs.db
 # Temporary files & Docker mounts
 tmp/
 temp/
+uploads/
 *.pid
 *.seed

@@ -27,6 +27,10 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  public getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   public getAccessToken(): string | null {
     return inMemoryAccessToken;
   }

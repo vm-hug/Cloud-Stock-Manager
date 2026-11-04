@@ -1,0 +1,127 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.low-stock-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    .title-group {
+      h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: v.$text-primary;
+        margin: 0 0 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        svg {
+          color: v.$color-warning-400;
+        }
+      }
+      p {
+        color: v.$text-secondary;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+  }
+
+  .alert-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+
+    .summary-card {
+      @include m.card;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+
+      .icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &.danger {
+          background: rgba(v.$color-danger-500, 0.15);
+          color: v.$color-danger-400;
+        }
+        &.warning {
+          background: rgba(v.$color-warning-500, 0.15);
+          color: v.$color-warning-400;
+        }
+      }
+
+      .text-box {
+        display: flex;
+        flex-direction: column;
+
+        .count {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: v.$text-primary;
+          line-height: 1.1;
+        }
+        .label {
+          font-size: 0.85rem;
+          color: v.$text-secondary;
+        }
+      }
+    }
+  }
+
+  .table-container {
+    @include m.card;
+    padding: 0;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+
+      thead {
+        background: rgba(v.$color-neutral-800, 0.5);
+        border-bottom: 1px solid v.$border-subtle;
+
+        th {
+          padding: 0.875rem 1rem;
+          color: v.$text-secondary;
+          font-weight: 600;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+        }
+      }
+
+      tbody tr {
+        border-bottom: 1px solid v.$border-subtle;
+        &:hover { background: v.$bg-surface-hover; }
+
+        td {
+          padding: 0.875rem 1rem;
+          vertical-align: middle;
+        }
+      }
+    }
+
+    .btn-reorder {
+      @include m.btn-primary;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+    }
+  }
+}

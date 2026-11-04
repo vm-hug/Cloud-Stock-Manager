@@ -11,6 +11,13 @@ import {
   Home,
   Layers,
   Package,
+  Building2,
+  Warehouse as WarehouseIcon,
+  AlertTriangle,
+  FileText,
+  Clock,
+  ArrowRightLeft,
+  UploadCloud,
 } from 'lucide-react';
 import './AppLayout.scss';
 
@@ -25,6 +32,13 @@ export const AppLayout: React.FC = () => {
   };
 
   const getPageTitle = () => {
+    if (location.pathname.startsWith('/warehouses')) return 'Warehouse Network';
+    if (location.pathname.startsWith('/inventory/low-stock')) return 'Low Stock Alerts';
+    if (location.pathname.startsWith('/inventory')) return 'Warehouse Inventory Balances';
+    if (location.pathname.startsWith('/stock-documents')) return 'Stock Documents & Vouchers';
+    if (location.pathname.startsWith('/approvals')) return 'Document Approval Queue';
+    if (location.pathname.startsWith('/movements')) return 'Stock Movement Ledger';
+    if (location.pathname.startsWith('/import-export')) return 'Bulk Import & Export Center';
     if (location.pathname.startsWith('/categories')) return 'Category Management';
     if (location.pathname.startsWith('/products')) return 'Product Catalog & SKUs';
     if (location.pathname.startsWith('/users')) return 'Staff & User Management';
@@ -44,7 +58,7 @@ export const AppLayout: React.FC = () => {
           </div>
           <div>
             <div className="brand-name">Cloud Stock</div>
-            <div className="brand-phase">Phase 3 Catalog</div>
+            <div className="brand-phase">Phase 4 Inventory</div>
           </div>
         </div>
 
@@ -52,6 +66,45 @@ export const AppLayout: React.FC = () => {
           <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
             <Home size={18} />
             <span>Architecture Home</span>
+          </NavLink>
+
+          <div className="nav-label">Warehouse & Inventory</div>
+
+          <NavLink to="/warehouses" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Building2 size={18} />
+            <span>Warehouses</span>
+          </NavLink>
+
+          <NavLink to="/inventory" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
+            <WarehouseIcon size={18} />
+            <span>Inventory Balances</span>
+          </NavLink>
+
+          <NavLink to="/inventory/low-stock" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <AlertTriangle size={18} />
+            <span>Low Stock Alerts</span>
+          </NavLink>
+
+          <NavLink to="/stock-documents" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FileText size={18} />
+            <span>Stock Documents</span>
+          </NavLink>
+
+          {(role === 'ADMIN' || role === 'MANAGER') && (
+            <NavLink to="/approvals" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+              <Clock size={18} />
+              <span>Approval Queue</span>
+            </NavLink>
+          )}
+
+          <NavLink to="/movements" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <ArrowRightLeft size={18} />
+            <span>Movements Ledger</span>
+          </NavLink>
+
+          <NavLink to="/import-export" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <UploadCloud size={18} />
+            <span>Import / Export</span>
           </NavLink>
 
           <div className="nav-label">Catalog & Products</div>

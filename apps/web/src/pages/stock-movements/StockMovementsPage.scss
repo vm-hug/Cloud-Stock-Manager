@@ -1,0 +1,122 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.stock-movements-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .page-header {
+    .title-group {
+      h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: v.$text-primary;
+        margin: 0 0 0.25rem 0;
+      }
+      p {
+        color: v.$text-secondary;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+  }
+
+  .filters-card {
+    @include m.card;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      label {
+        font-size: 0.85rem;
+        color: v.$text-secondary;
+      }
+
+      select {
+        @include m.form-input;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+      }
+    }
+  }
+
+  .table-container {
+    @include m.card;
+    padding: 0;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+
+      thead {
+        background: rgba(v.$color-neutral-800, 0.5);
+        border-bottom: 1px solid v.$border-subtle;
+
+        th {
+          padding: 0.875rem 1rem;
+          color: v.$text-secondary;
+          font-weight: 600;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+        }
+      }
+
+      tbody tr {
+        border-bottom: 1px solid v.$border-subtle;
+        &:hover { background: v.$bg-surface-hover; }
+
+        td {
+          padding: 0.875rem 1rem;
+          vertical-align: middle;
+        }
+      }
+    }
+
+    .doc-link {
+      font-family: v.$font-family-mono;
+      color: v.$color-primary-400;
+      text-decoration: none;
+      font-weight: 600;
+      &:hover { text-decoration: underline; }
+    }
+
+    .delta-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: v.$font-family-mono;
+      font-size: 0.85rem;
+
+      &.positive {
+        background: rgba(v.$color-success-500, 0.15);
+        color: v.$color-success-400;
+      }
+      &.negative {
+        background: rgba(v.$color-danger-500, 0.15);
+        color: v.$color-danger-400;
+      }
+    }
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0;
+
+    button {
+      @include m.btn-secondary;
+      padding: 0.4rem 0.75rem;
+    }
+  }
+}

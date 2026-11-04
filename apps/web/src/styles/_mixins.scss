@@ -2,6 +2,8 @@
 // Cloud Stock Management - Reusable SCSS Mixins
 // ========================================================
 
+@use 'variables' as v;
+
 // --------------------------------------------------------
 // 1. Responsive Breakpoints
 // --------------------------------------------------------
@@ -98,3 +100,85 @@ $breakpoint-2xl: 1536px;
     background: rgba(148, 163, 184, 0.5);
   }
 }
+
+// --------------------------------------------------------
+// 6. UI Building Blocks
+// --------------------------------------------------------
+@mixin card {
+  background: v.$bg-surface;
+  border: 1px solid v.$border-subtle;
+  border-radius: v.$radius-lg;
+  padding: v.$space-6;
+}
+
+@mixin btn-primary {
+  background: v.$color-primary-600;
+  color: v.$color-neutral-0;
+  border: none;
+  border-radius: v.$radius-md;
+  padding: 0.5rem 1rem;
+  font-weight: v.$font-weight-semibold;
+  cursor: pointer;
+  transition: background v.$transition-fast;
+
+  &:hover {
+    background: v.$color-primary-700;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin btn-secondary {
+  background: rgba(v.$color-neutral-700, 0.4);
+  color: v.$text-primary;
+  border: 1px solid v.$border-medium;
+  border-radius: v.$radius-md;
+  padding: 0.5rem 1rem;
+  font-weight: v.$font-weight-medium;
+  cursor: pointer;
+  transition: background v.$transition-fast;
+
+  &:hover {
+    background: rgba(v.$color-neutral-700, 0.7);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin btn-ghost {
+  background: transparent;
+  color: v.$text-secondary;
+  border: none;
+  border-radius: v.$radius-md;
+  padding: 0.35rem 0.65rem;
+  font-weight: v.$font-weight-medium;
+  cursor: pointer;
+  transition: color v.$transition-fast, background v.$transition-fast;
+
+  &:hover {
+    color: v.$text-primary;
+    background: rgba(v.$color-neutral-700, 0.3);
+  }
+}
+
+@mixin form-input {
+  background: v.$color-neutral-900;
+  border: 1px solid v.$border-medium;
+  border-radius: v.$radius-md;
+  color: v.$text-primary;
+  padding: 0.5rem 0.75rem;
+  font-size: v.$font-size-sm;
+  outline: none;
+  transition: border-color v.$transition-fast;
+
+  &:focus {
+    border-color: v.$color-primary-500;
+  }
+}
+

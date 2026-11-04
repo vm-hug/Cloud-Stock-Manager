@@ -62,6 +62,25 @@ export enum AuditAction {
   UPLOAD_PRODUCT_IMAGE = 'UPLOAD_PRODUCT_IMAGE',
   SET_PRIMARY_IMAGE = 'SET_PRIMARY_IMAGE',
   DELETE_PRODUCT_IMAGE = 'DELETE_PRODUCT_IMAGE',
+
+  // Phase 4 Warehouse, Inventory, Documents & Import Audit Actions
+  CREATE_WAREHOUSE = 'CREATE_WAREHOUSE',
+  UPDATE_WAREHOUSE = 'UPDATE_WAREHOUSE',
+  CHANGE_WAREHOUSE_STATUS = 'CHANGE_WAREHOUSE_STATUS',
+  UPDATE_STOCK_THRESHOLD = 'UPDATE_STOCK_THRESHOLD',
+  CREATE_STOCK_DOCUMENT = 'CREATE_STOCK_DOCUMENT',
+  UPDATE_STOCK_DOCUMENT = 'UPDATE_STOCK_DOCUMENT',
+  SUBMIT_STOCK_DOCUMENT = 'SUBMIT_STOCK_DOCUMENT',
+  APPROVE_STOCK_DOCUMENT = 'APPROVE_STOCK_DOCUMENT',
+  REJECT_STOCK_DOCUMENT = 'REJECT_STOCK_DOCUMENT',
+  CANCEL_STOCK_DOCUMENT = 'CANCEL_STOCK_DOCUMENT',
+  POST_INBOUND = 'POST_INBOUND',
+  POST_OUTBOUND = 'POST_OUTBOUND',
+  POST_ADJUSTMENT = 'POST_ADJUSTMENT',
+  POST_TRANSFER = 'POST_TRANSFER',
+  CREATE_IMPORT_JOB = 'CREATE_IMPORT_JOB',
+  COMPLETE_IMPORT_JOB = 'COMPLETE_IMPORT_JOB',
+  FAIL_IMPORT_JOB = 'FAIL_IMPORT_JOB',
 }
 
 // Standard API Response Envelope
@@ -183,6 +202,7 @@ export interface ProductVariant {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  product?: Product;
   inventoryBalances?: Array<{
     warehouseId: string;
     quantity: number;
@@ -216,3 +236,117 @@ export interface CloudinarySignedParams {
   folder: string;
   publicId: string;
 }
+
+// ========================================================
+// Phase 4 Warehouse & Inventory Management Domain Types
+// ========================================================
+
+export type StockStatus = 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    inventoryBalances?: number;
+    stockMovements?: number;
+    sourceDocuments?: number;
+    destinationDocuments?: number;
+  };
+}
+
+export interface InventoryBalance {
+  warehouseId: string;
+  variantId: string;
+  quantity: number;
+  minThreshold: number;
+  updatedAt: string;
+  warehouse?: Warehouse;
+  variant?: ProductVariant;
+  stockStatus?: StockStatus;
+}
+
+export interface StockDocumentItem {
+  id: string;
+  documentId: string;
+  variantId: string;
+  quantity: number;
+  adjustmentDelta?: number | null;
+  unitPrice?: string | number | null;
+  variant?: ProductVariant;
+  stockMovements?: StockMovement[];
+}
+
+export interface StockDocument {
+  id: string;
+  documentCode: string;
+  type: StockDocType;
+  status: StockDocStatus;
+  sourceWarehouseId?: string | null;
+  destinationWarehouseId?: string | null;
+  note?: string | null;
+  createdById: string;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  postedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: UserProfile;
+  approvedBy?: UserProfile | null;
+  sourceWarehouse?: Warehouse | null;
+  destinationWarehouse?: Warehouse | null;
+  items?: StockDocumentItem[];
+  _count?: {
+    items?: number;
+  };
+}
+
+export interface StockMovement {
+  id: string;
+  documentItemId: string;
+  warehouseId: string;
+  variantId: string;
+  delta: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  createdAt: string;
+  warehouse?: Warehouse;
+  variant?: ProductVariant;
+  documentItem?: {
+    id: string;
+    documentId: string;
+    document?: {
+      id: string;
+      documentCode: string;
+      type: StockDocType;
+      status: StockDocStatus;
+      createdById: string;
+      approvedById?: string | null;
+      createdBy?: { name: string; email: string };
+      approvedBy?: { name: string; email: string } | null;
+    };
+  };
+}
+
+export interface ImportJob {
+  id: string;
+  createdById: string;
+  status: ImportJobStatus;
+  originalFilename: string;
+  totalRows: number;
+  processedRows: number;
+  failedRows: number;
+  errorReportUrl?: string | null;
+  queueJobId?: string | null;
+  createdAt: string;
+  finishedAt?: string | null;
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+

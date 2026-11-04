@@ -125,3 +125,41 @@ Each backend module in `apps/api/src/modules/<module_name>/` follows a strict 5-
 6. **SKU Immutability upon Stock Movement:** A variant's SKU identifier cannot be altered once historical `stock_movements` have been recorded, preserving audit trail integrity.
 7. **Positive Stock Deletion Protection:** A variant with positive total inventory cannot be soft-deleted or deactivated until stock has been transferred or adjusted to zero.
 8. **Soft Delete Preservation:** Soft-deleting a product (`deleted_at = NOW()`) preserves all variants, images, and inventory balances intact so historical warehouse documents remain completely auditable.
+
+---
+
+## 5. Phase 4 Inventory Architecture & Concurrency Control
+
+### 5.1 Source of Truth & Zero In-Variant Quantity Invariant
+- PostgreSQL 16 is the sole source of truth for all inventory quantities.
+- The `product_variants` table contains **NO quantity column**.
+- The `inventory_balances` table is the unique store of physical stock, keyed by composite primary key `(warehouse_id, variant_id)` with database check constraints:
+  - `CHECK (quantity >= 0)`
+  - `CHECK (min_threshold >= 0)`
+
+### 5.2 Stock Document State Machine
+All warehouse transactions follow a finite state machine:
+- `DRAFT`: Initial draft created by personnel; line items, warehouses, and notes can be edited. Inventory is **not** affected.
+- `PENDING`: Voucher submitted for managerial review. Document is immutable. Inventory is **not** affected.
+- `POSTED`: Authorized by an Admin or Manager (`creator_id !== approver_id`). Changes `inventory_balances` and writes immutable `stock_movements`.
+- `REJECTED`: Managerial rejection with recorded reason. Terminal state.
+- `CANCELLED`: Cancelled by creator or authorized staff before posting. Terminal state.
+
+### 5.3 PostgreSQL Interactive Transactions & Pessimistic Row-Level Locking
+Posting vouchers is executed strictly within `prisma.$transaction`:
+1. **Document Lock:** `SELECT ... FROM stock_documents WHERE id = $1 FOR UPDATE` asserts `status === 'PENDING'`.
+2. **Missing Balance Upsert:** Ensures `inventory_balances` rows exist (`quantity = 0`) before locking to avoid lock misses.
+3. **Deadlock Elimination (Stable Lock Ordering):** All touched `(warehouse_id, variant_id)` pairs are ordered by `warehouse_id ASC, variant_id ASC` before issuing parameterized SQL `SELECT ... FOR UPDATE`.
+4. **Insufficient Stock Defense:** Outbound and Transfer requests verify `quantityBefore >= requestedQty`. Insufficient balance triggers immediate rollback; negative stock is impossible at both application and database engine level.
+5. **Atomic Movement & Audit Logging:** Updates to `inventory_balances`, creation of `stock_movements`, transition of document to `POSTED`, and `audit_logs` commit in a single ACID transaction.
+
+### 5.4 Asynchronous Processing & Queue Reliability (BullMQ & Redis 7)
+- Large CSV and XLSX bulk product catalog imports are offloaded to BullMQ (`product-import` queue) backed by Redis 7.
+- Redis connection options configure `maxRetriesPerRequest: null` for queue stability.
+- Workers run bounded concurrency (2 concurrent jobs), stream and validate rows, check duplicates within file and database, and update `import_jobs` progress in PostgreSQL.
+- Generated error reports are written to disk as CSV files downloadable via `/api/v1/imports/:id/errors`.
+- Standalone worker runner is provided at `apps/api/src/jobs/workerRunner.ts`.
+
+### 5.5 Formula Injection Protection
+When exporting inventory reports to CSV or Excel, any text value starting with spreadsheet formula trigger characters (`=`, `+`, `-`, `@`, `\t`, `\r`) is automatically sanitized by prefixing with a single quote (`'`).
+

@@ -1,0 +1,298 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.inventory-overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    .title-group {
+      h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: v.$text-primary;
+        margin: 0 0 0.25rem 0;
+      }
+      p {
+        color: v.$text-secondary;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+
+    .export-actions {
+      display: flex;
+      gap: 0.75rem;
+
+      .btn-export {
+        @include m.btn-secondary;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+      }
+    }
+  }
+
+  .filters-card {
+    @include m.card;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      position: relative;
+
+      svg {
+        position: absolute;
+        left: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: v.$text-muted;
+      }
+
+      input {
+        @include m.form-input;
+        padding-left: 2.5rem;
+        width: 100%;
+      }
+    }
+
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      label {
+        font-size: 0.85rem;
+        color: v.$text-secondary;
+      }
+
+      select {
+        @include m.form-input;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+      }
+    }
+  }
+
+  .table-container {
+    @include m.card;
+    padding: 0;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+
+      thead {
+        background: rgba(v.$color-neutral-800, 0.5);
+        border-bottom: 1px solid v.$border-subtle;
+
+        th {
+          padding: 0.875rem 1rem;
+          color: v.$text-secondary;
+          font-weight: 600;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+      }
+
+      tbody {
+        tr {
+          border-bottom: 1px solid v.$border-subtle;
+          transition: background-color 0.15s ease;
+
+          &:hover {
+            background-color: v.$bg-surface-hover;
+          }
+
+          td {
+            padding: 0.875rem 1rem;
+            color: v.$text-primary;
+            vertical-align: middle;
+          }
+        }
+      }
+    }
+
+    .wh-cell {
+      display: flex;
+      flex-direction: column;
+
+      .wh-code {
+        font-weight: 600;
+        font-family: v.$font-family-mono;
+        color: v.$color-primary-300;
+      }
+      .wh-name {
+        font-size: 0.8rem;
+        color: v.$text-muted;
+      }
+    }
+
+    .product-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+
+      .thumb {
+        width: 38px;
+        height: 38px;
+        border-radius: 6px;
+        background: v.$color-neutral-800;
+        object-fit: cover;
+        border: 1px solid v.$border-subtle;
+      }
+
+      .thumb-placeholder {
+        width: 38px;
+        height: 38px;
+        border-radius: 6px;
+        background: v.$color-neutral-800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: v.$text-muted;
+        border: 1px solid v.$border-subtle;
+      }
+
+      .p-details {
+        display: flex;
+        flex-direction: column;
+
+        .p-name {
+          font-weight: 600;
+          color: v.$text-primary;
+        }
+        .p-cat {
+          font-size: 0.75rem;
+          color: v.$text-secondary;
+        }
+      }
+    }
+
+    .sku-cell {
+      display: flex;
+      flex-direction: column;
+
+      .sku-code {
+        font-family: v.$font-family-mono;
+        font-weight: 600;
+        color: v.$text-primary;
+      }
+      .variant-title {
+        font-size: 0.8rem;
+        color: v.$text-muted;
+      }
+    }
+
+    .qty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+
+      &.in-stock {
+        color: v.$color-success-400;
+      }
+      &.low-stock {
+        color: v.$color-warning-400;
+      }
+      &.out-of-stock {
+        color: v.$color-danger-400;
+      }
+    }
+
+    .threshold-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      button {
+        background: transparent;
+        border: none;
+        color: v.$text-muted;
+        cursor: pointer;
+        padding: 0.2rem;
+        border-radius: 4px;
+        &:hover {
+          color: v.$color-primary-400;
+          background: rgba(v.$color-primary-500, 0.1);
+        }
+      }
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.in-stock {
+        background: rgba(v.$color-success-500, 0.15);
+        color: v.$color-success-400;
+      }
+      &.low-stock {
+        background: rgba(v.$color-warning-500, 0.15);
+        color: v.$color-warning-400;
+      }
+      &.out-of-stock {
+        background: rgba(v.$color-danger-500, 0.15);
+        color: v.$color-danger-400;
+      }
+    }
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0;
+
+    span {
+      font-size: 0.85rem;
+      color: v.$text-secondary;
+    }
+
+    button {
+      @include m.btn-secondary;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+  }
+
+  .modal-content {
+    @include m.card;
+    width: 100%;
+    max-width: 400px;
+    background: v.$color-neutral-900;
+    border: 1px solid v.$border-medium;
+  }
+}

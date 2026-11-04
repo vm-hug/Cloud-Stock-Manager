@@ -149,6 +149,11 @@ Các quy tắc sau đây là **BẤT BIẾN BẮT BUỘC**, không được phé
 26. **Chống xóa SKU còn tồn kho:** Không cho phép soft-delete hoặc vô hiệu hóa `ProductVariant` nếu tổng số lượng tồn kho (`inventory_balances`) đang lớn hơn 0.
 27. **Duy nhất ảnh đại diện (Single Primary Image):** Mỗi sản phẩm có tối đa 1 ảnh primary, được bảo vệ ở tầng cơ sở dữ liệu bằng PostgreSQL Partial Unique Index (`CREATE UNIQUE INDEX ON product_images (product_id) WHERE is_primary = true`). Thao tác đổi ảnh chính hoặc xóa ảnh chính phải chạy trong interactive transaction.
 28. **Chống vô hiệu hóa Category có sản phẩm active:** Không cho phép vô hiệu hóa danh mục (`categories.is_active = false`) khi danh mục đó vẫn còn chứa các sản phẩm đang hoạt động (`is_active = true, deleted_at IS NULL`).
+29. **Chính sách tự duyệt (Self-Approval Invariant):** Người lập phiếu (`created_by`) tuyệt đối không được phép tự phê duyệt phiếu của chính mình (`created_by != approver_id`). Phê duyệt bắt buộc phải do một Admin hoặc Manager khác thực hiện.
+30. **Bảo vệ vô hiệu hóa Kho (Warehouse Deactivation Protection):** Không cho phép vô hiệu hóa kho (`warehouses.is_active = false`) khi kho đó đang còn tồn kho dương (`inventory_balances.quantity > 0`) hoặc đang có phiếu ở trạng thái `PENDING` chưa xử lý.
+31. **Điều chỉnh kiểm kê có dấu (Signed Inventory Adjustment):** Phiếu kiểm kê/điều chỉnh (`ADJUSTMENT`) sử dụng trường `adjustment_delta` kiểu số nguyên có dấu khác 0 (`adjustment_delta <> 0`) để ghi nhận chênh lệch thừa/thiếu. Không ép số âm vào trường `quantity` vốn bị chặn bởi check constraint `quantity > 0`.
+32. **Phòng chống tấn công Formula Injection:** Mọi trường dữ liệu văn bản xuất ra file báo cáo CSV/Excel (như tên SKU, tên sản phẩm, mã kho) nếu bắt đầu bằng các ký tự công thức (`=`, `+`, `-`, `@`, `\t`, `\r`) bắt buộc phải được tiền tố bằng dấu nháy đơn (`'`).
+33. **Xử lý nền BullMQ với Redis noeviction:** Các tác vụ import file danh mục lớn bắt buộc được xử lý bất đồng bộ qua hàng đợi BullMQ với kết nối Redis riêng (`maxRetriesPerRequest: null`). Báo cáo lỗi được sinh thành file CSV lưu trữ bền vững để tải về.
 
 ---
 

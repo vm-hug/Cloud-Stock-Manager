@@ -1,0 +1,215 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.stock-documents-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    .title-group {
+      h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: v.$text-primary;
+        margin: 0 0 0.25rem 0;
+      }
+      p {
+        color: v.$text-secondary;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+
+    .btn-create {
+      @include m.btn-primary;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+  }
+
+  .filters-card {
+    @include m.card;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+      position: relative;
+
+      svg {
+        position: absolute;
+        left: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: v.$text-muted;
+      }
+
+      input {
+        @include m.form-input;
+        padding-left: 2.5rem;
+        width: 100%;
+      }
+    }
+
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      label {
+        font-size: 0.85rem;
+        color: v.$text-secondary;
+      }
+
+      select {
+        @include m.form-input;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+      }
+    }
+  }
+
+  .table-container {
+    @include m.card;
+    padding: 0;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+
+      thead {
+        background: rgba(v.$color-neutral-800, 0.5);
+        border-bottom: 1px solid v.$border-subtle;
+
+        th {
+          padding: 0.875rem 1rem;
+          color: v.$text-secondary;
+          font-weight: 600;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+        }
+      }
+
+      tbody tr {
+        border-bottom: 1px solid v.$border-subtle;
+        &:hover { background: v.$bg-surface-hover; }
+
+        td {
+          padding: 0.875rem 1rem;
+          vertical-align: middle;
+        }
+      }
+    }
+
+    .doc-code {
+      font-family: v.$font-family-mono;
+      font-weight: 600;
+      color: v.$color-primary-300;
+    }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.inbound {
+        background: rgba(v.$color-success-500, 0.15);
+        color: v.$color-success-400;
+      }
+      &.outbound {
+        background: rgba(v.$color-danger-500, 0.15);
+        color: v.$color-danger-400;
+      }
+      &.transfer {
+        background: rgba(v.$color-secondary-500, 0.15);
+        color: v.$color-secondary-500;
+      }
+      &.adjustment {
+        background: rgba(v.$color-warning-500, 0.15);
+        color: v.$color-warning-400;
+      }
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.draft {
+        background: v.$status-draft-bg;
+        color: v.$status-draft-text;
+      }
+      &.pending {
+        background: v.$status-pending-bg;
+        color: v.$status-pending-text;
+      }
+      &.posted {
+        background: v.$status-posted-bg;
+        color: v.$status-posted-text;
+      }
+      &.rejected {
+        background: v.$status-rejected-bg;
+        color: v.$status-rejected-text;
+      }
+      &.cancelled {
+        background: v.$status-cancelled-bg;
+        color: v.$status-cancelled-text;
+      }
+    }
+
+    .wh-route {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: v.$text-secondary;
+      font-size: 0.85rem;
+
+      strong {
+        color: v.$text-primary;
+        font-family: v.$font-family-mono;
+      }
+    }
+
+    .action-btn {
+      @include m.btn-ghost;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+    }
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0;
+
+    button {
+      @include m.btn-secondary;
+      padding: 0.4rem 0.75rem;
+    }
+  }
+}

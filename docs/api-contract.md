@@ -102,12 +102,37 @@ All HTTP endpoints return responses structured with the standard ApiResponse env
 
 ---
 
-## 4. Planned Endpoint Specifications for Subsequent Phases (Inventory)
+## 4. Endpoints Implemented in Phase 4 (Warehouse, Inventory & Background Jobs)
 
-### Inventory Module (`/api/v1/inventory`) - Phase 4
-- `GET  /api/v1/inventory/balances`: Query current warehouse stock balances.
-- `GET  /api/v1/inventory/documents`: List stock documents.
-- `POST /api/v1/inventory/documents`: Create DRAFT document.
-- `POST /api/v1/inventory/documents/:id/submit`: Submit document to PENDING.
-- `POST /api/v1/inventory/documents/:id/post`: Approve & POST document (Pessimistic Locking `SELECT ... FOR UPDATE`).
-- `POST /api/v1/inventory/documents/:id/cancel`: Cancel document.
+### 4.1 Warehouses Module (`/api/v1/warehouses`)
+- `GET   /api/v1/warehouses`: List all physical storage facilities with search, pagination, and active status filtering (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/warehouses/:id`: Get detailed warehouse profile with balance and movement counts (**ADMIN, MANAGER, STAFF**).
+- `POST  /api/v1/warehouses`: Create physical warehouse facility with unique uppercase code (**ADMIN, MANAGER**).
+- `PATCH /api/v1/warehouses/:id`: Update warehouse facility code or name (**ADMIN, MANAGER**).
+- `PATCH /api/v1/warehouses/:id/status`: Toggle warehouse active status. Invariant: Cannot deactivate facility with positive inventory balances or pending documents (**ADMIN, MANAGER**).
+
+### 4.2 Inventory Balances & Alerts Module (`/api/v1/inventory`)
+- `GET   /api/v1/inventory/balances`: Paginated real-time stock balances with search, warehouse filter, category filter, and stockStatus calculation (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/inventory/balances/:warehouseId/:variantId`: Query balance for a specific facility and variant SKU (**ADMIN, MANAGER, STAFF**).
+- `PATCH /api/v1/inventory/balances/:warehouseId/:variantId/threshold`: Update minimum alert threshold for SKU at facility (**ADMIN, MANAGER**).
+- `GET   /api/v1/inventory/low-stock`: Filtered list of depleted items where `quantity <= min_threshold` (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/inventory/movements`: Query chronological immutable stock movements ledger (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/inventory/export`: Export live inventory balances as CSV or XLSX with formula injection protection (**ADMIN, MANAGER, STAFF**).
+
+### 4.3 Stock Documents Lifecycle Module (`/api/v1/stock-documents`)
+- `GET   /api/v1/stock-documents`: Paginated list of stock documents with filters for code, type, status, warehouse, and creator (**ADMIN, MANAGER, STAFF**).
+- `GET   /api/v1/stock-documents/:id`: Full details of document, including SKU items and historical stock movements when POSTED (**ADMIN, MANAGER, STAFF**).
+- `POST  /api/v1/stock-documents`: Create DRAFT voucher for INBOUND, OUTBOUND, TRANSFER, or ADJUSTMENT (**ADMIN, MANAGER, STAFF**).
+- `PATCH /api/v1/stock-documents/:id`: Edit line items or notes of a DRAFT voucher (**ADMIN, MANAGER, STAFF [own draft only]**).
+- `POST  /api/v1/stock-documents/:id/submit`: Transition document state from `DRAFT` to `PENDING` (**ADMIN, MANAGER, STAFF [own draft only]**).
+- `POST  /api/v1/stock-documents/:id/approve`: Authorize document and transition to `POSTED`. Executes in PostgreSQL Interactive Transaction with `SELECT ... FOR UPDATE` pessimistic locking in stable order `(warehouse_id ASC, variant_id ASC)`. Enforces strict approval policy: `creator !== approver` (**ADMIN, MANAGER**).
+- `POST  /api/v1/stock-documents/:id/reject`: Reject voucher from `PENDING` to terminal `REJECTED` state with reason (**ADMIN, MANAGER**).
+- `POST  /api/v1/stock-documents/:id/cancel`: Cancel voucher in `DRAFT` or `PENDING` to terminal `CANCELLED` state (**ADMIN, MANAGER, STAFF [own document only]**).
+
+### 4.4 Bulk Catalog Import & Background Processing Module (`/api/v1/imports`)
+- `POST  /api/v1/imports/products`: Multipart upload of `.csv` or `.xlsx` catalog spreadsheet. Enqueues background job to BullMQ queue `product-import` and returns `202 Accepted` (**ADMIN, MANAGER**).
+- `GET   /api/v1/imports`: List import jobs with status and row counts (**ADMIN, MANAGER**).
+- `GET   /api/v1/imports/:id`: Real-time polling endpoint for import job execution progress and failed rows (**ADMIN, MANAGER**).
+- `GET   /api/v1/imports/:id/errors`: Download error report CSV containing failed row numbers and validation failure explanations (**ADMIN, MANAGER**).
+- `GET   /api/v1/imports/template`: Download sample product catalog CSV or XLSX template (**ADMIN, MANAGER**).
+

@@ -3,15 +3,19 @@ import { Prisma } from '@prisma/client';
 import { AuditLogQueryInput } from './audit.schema';
 
 export class AuditRepository {
-  async createLog(data: {
-    actorId?: string | null;
-    action: string;
-    entityType: string;
-    entityId: string;
-    metadata?: Record<string, unknown> | null;
-    ipAddress?: string | null;
-  }) {
-    return prisma.auditLog.create({
+  async createLog(
+    data: {
+      actorId?: string | null;
+      action: string;
+      entityType: string;
+      entityId: string;
+      metadata?: Record<string, unknown> | null;
+      ipAddress?: string | null;
+    },
+    tx?: Prisma.TransactionClient
+  ) {
+    const client = tx || prisma;
+    return client.auditLog.create({
       data: {
         actorId: data.actorId,
         action: data.action,

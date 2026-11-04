@@ -13,6 +13,15 @@ import { SystemHealthPage } from './pages/system/SystemHealthPage';
 import { CategoriesPage } from './pages/categories/CategoriesPage';
 import { ProductsPage } from './pages/products/ProductsPage';
 import { ProductDetailPage } from './pages/products/ProductDetailPage';
+import { WarehousesPage } from './pages/warehouses/WarehousesPage';
+import { InventoryOverviewPage } from './pages/inventory/InventoryOverviewPage';
+import { LowStockPage } from './pages/inventory/LowStockPage';
+import { StockDocumentsPage } from './pages/stock-documents/StockDocumentsPage';
+import { StockDocumentCreatePage } from './pages/stock-documents/StockDocumentCreatePage';
+import { StockDocumentDetailPage } from './pages/stock-documents/StockDocumentDetailPage';
+import { ApprovalQueuePage } from './pages/stock-documents/ApprovalQueuePage';
+import { StockMovementsPage } from './pages/stock-movements/StockMovementsPage';
+import { ImportExportPage } from './pages/import-export/ImportExportPage';
 import { Role } from '@cloud-stock/shared';
 
 export const App: React.FC = () => {
@@ -29,6 +38,21 @@ export const App: React.FC = () => {
             <Route element={<AppLayout />}>
               {/* Profile accessible to all authenticated roles */}
               <Route path="/profile" element={<ProfilePage />} />
+
+              {/* Warehouse & Inventory Management */}
+              <Route path="/warehouses" element={<WarehousesPage />} />
+              <Route path="/inventory" element={<InventoryOverviewPage />} />
+              <Route path="/inventory/low-stock" element={<LowStockPage />} />
+              <Route path="/stock-documents" element={<StockDocumentsPage />} />
+              <Route path="/stock-documents/create" element={<StockDocumentCreatePage />} />
+              <Route path="/stock-documents/:id" element={<StockDocumentDetailPage />} />
+              <Route path="/movements" element={<StockMovementsPage />} />
+              <Route path="/import-export" element={<ImportExportPage />} />
+
+              {/* Approval Queue accessible to ADMIN & MANAGER */}
+              <Route element={<RoleRoute allowedRoles={[Role.ADMIN, Role.MANAGER]} />}>
+                <Route path="/approvals" element={<ApprovalQueuePage />} />
+              </Route>
 
               {/* Catalog & Products accessible to ADMIN, MANAGER, STAFF */}
               <Route path="/categories" element={<CategoriesPage />} />

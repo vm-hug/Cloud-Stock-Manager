@@ -147,6 +147,7 @@ erDiagram
         uuid document_id FK
         uuid variant_id FK
         integer quantity "CHECK > 0"
+        integer adjustment_delta "CHECK IS NULL OR <> 0"
         numeric unit_price
     }
 

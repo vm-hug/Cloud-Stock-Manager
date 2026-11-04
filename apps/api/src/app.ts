@@ -11,6 +11,8 @@ import { auditRoutes } from './modules/audit/audit.routes';
 import { systemRoutes } from './modules/system/system.routes';
 import { systemController } from './modules/system/system.controller';
 import catalogRoutes from './modules/catalog/catalog.routes';
+import inventoryRoutes from './modules/inventory/inventory.routes';
+import importsRoutes from './modules/imports/imports.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -52,6 +54,8 @@ export function createApp(): Application {
   app.use('/api/v1/audit-logs', auditRoutes);
   app.use('/api/v1/system', systemRoutes);
   app.use('/api/v1', catalogRoutes);
+  app.use('/api/v1', inventoryRoutes);
+  app.use('/api/v1', importsRoutes);
 
   // Catch-all 404 for undefined routes
   app.use((_req: Request, _res: Response, next: NextFunction) => {

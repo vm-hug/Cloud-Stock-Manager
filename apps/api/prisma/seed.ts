@@ -85,7 +85,7 @@ async function main() {
 
   console.log(`✅ Users seeded: Admin (${adminUser.email}), Manager (${managerUser.email}), Staff (${staffUser.email})`);
 
-  // 3. Seed Default Warehouse
+  // 3. Seed Default Warehouses (Main & North Regional)
   const defaultWarehouse = await prisma.warehouse.upsert({
     where: { code: 'WH-MAIN' },
     update: {
@@ -98,7 +98,20 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Warehouse seeded: ${defaultWarehouse.name} [${defaultWarehouse.code}]`);
+
+  const northWarehouse = await prisma.warehouse.upsert({
+    where: { code: 'WH-NORTH' },
+    update: {
+      name: 'North Regional Warehouse',
+      isActive: true,
+    },
+    create: {
+      code: 'WH-NORTH',
+      name: 'North Regional Warehouse',
+      isActive: true,
+    },
+  });
+  console.log(`✅ Warehouses seeded: ${defaultWarehouse.name} [${defaultWarehouse.code}], ${northWarehouse.name} [${northWarehouse.code}]`);
 
   // 4. Seed Category
   const category = await prisma.category.upsert({
