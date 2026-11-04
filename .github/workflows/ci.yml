@@ -2,14 +2,52 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'feature/**']
   pull_request:
     branches: [main, develop]
 
 jobs:
-  validate-and-build:
-    name: Lint, Typecheck and Build
+  validate-test-and-build:
+    name: Lint, Typecheck, Test & Build
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cloud_stock_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/cloud_stock_db?schema=public"
+      REDIS_URL: "redis://localhost:6379"
+      JWT_ACCESS_SECRET: "ci_pipeline_jwt_access_secret_minimum_32_characters"
+      JWT_REFRESH_SECRET: "ci_pipeline_jwt_refresh_secret_minimum_32_characters"
+      SEED_ADMIN_EMAIL: "admin@cloudstock.dev"
+      SEED_ADMIN_PASSWORD: "AdminPassword123!"
+      SEED_MANAGER_EMAIL: "manager@cloudstock.dev"
+      SEED_MANAGER_PASSWORD: "ManagerPassword123!"
+      SEED_STAFF_EMAIL: "staff@cloudstock.dev"
+      SEED_STAFF_PASSWORD: "StaffPassword123!"
 
     steps:
       - name: Checkout Code
@@ -21,7 +59,7 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Monorepo Dependencies
+      - name: Install Dependencies
         run: npm ci
 
       - name: Validate Prisma Schema
@@ -30,8 +68,17 @@ jobs:
       - name: Generate Prisma Client
         run: npm run db:generate
 
-      - name: Run Typecheck Across Workspaces
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Run Seed Data
+        run: npm run db:seed
+
+      - name: Run Monorepo Typecheck
         run: npm run typecheck
+
+      - name: Run Automated Test Suite
+        run: npm test
 
       - name: Build All Workspaces
         run: npm run build
