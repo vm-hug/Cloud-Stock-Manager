@@ -241,3 +241,4 @@ export type UpdateStockDocumentInput = z.infer<typeof updateStockDocumentSchema>
 export type StockDocumentQueryInput = z.infer<typeof stockDocumentQuerySchema>;
 export type StockMovementQueryInput = z.infer<typeof stockMovementQuerySchema>;
 export type ExportInventoryQueryInput = z.infer<typeof exportInventoryQuerySchema>;
+

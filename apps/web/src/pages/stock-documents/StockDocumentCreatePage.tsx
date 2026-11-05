@@ -357,3 +357,4 @@ export const StockDocumentCreatePage: React.FC = () => {
     </div>
   );
 };
+
