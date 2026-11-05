@@ -19,3 +19,4 @@ export const topStockedFilterSchema = z.object({
 export type AnalyticsFilterInput = z.infer<typeof analyticsFilterSchema>;
 export type StockTrendsFilterInput = z.infer<typeof stockTrendsFilterSchema>;
 export type TopStockedFilterInput = z.infer<typeof topStockedFilterSchema>;
+

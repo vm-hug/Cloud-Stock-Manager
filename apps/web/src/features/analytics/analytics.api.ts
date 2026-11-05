@@ -69,3 +69,4 @@ export const analyticsApi = {
     return api.post<{ keysCleared: number }>('/v1/system/cache/clear');
   },
 };
+

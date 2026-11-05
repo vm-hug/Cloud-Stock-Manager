@@ -24,3 +24,4 @@ export class SearchController {
 }
 
 export const searchController = new SearchController();
+

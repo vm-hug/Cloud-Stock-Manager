@@ -102,3 +102,4 @@ Administrators can monitor live cache performance metrics via:
   - `dbLatencyMs`, `redisLatencyMs`
   - `redisStatus`
 - Cache Purge: `POST /api/v1/system/cache/clear` (Admin-only, logged to Audit Trail)
+

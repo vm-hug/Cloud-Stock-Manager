@@ -29,3 +29,4 @@ export const searchApi = {
     return api.get<ProductSearchResponse>(endpoint);
   },
 };
+

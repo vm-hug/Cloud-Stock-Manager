@@ -447,3 +447,4 @@ runPhase5Tests()
     console.error('❌ Phase 5 test failure:', err);
     process.exit(1);
   });
+

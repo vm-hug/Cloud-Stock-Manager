@@ -23,3 +23,4 @@ export const searchProductsSchema = z.object({
 });
 
 export type SearchProductsQueryInput = z.infer<typeof searchProductsSchema>;
+

@@ -11,3 +11,4 @@ CREATE INDEX IF NOT EXISTS "idx_product_variants_name_trgm" ON "product_variants
 CREATE INDEX IF NOT EXISTS "idx_products_created_at" ON "products" ("created_at" DESC);
 CREATE INDEX IF NOT EXISTS "idx_product_variants_price" ON "product_variants" ("price");
 CREATE INDEX IF NOT EXISTS "idx_inventory_balances_qty" ON "inventory_balances" ("quantity");
+

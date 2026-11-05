@@ -202,3 +202,4 @@ export class SearchRepository {
 }
 
 export const searchRepository = new SearchRepository();
+

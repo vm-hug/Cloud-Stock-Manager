@@ -18,3 +18,4 @@ router.get(
 
 export const searchRoutes = router;
 export default router;
+
