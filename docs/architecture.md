@@ -163,3 +163,39 @@ Posting vouchers is executed strictly within `prisma.$transaction`:
 ### 5.5 Formula Injection Protection
 When exporting inventory reports to CSV or Excel, any text value starting with spreadsheet formula trigger characters (`=`, `+`, `-`, `@`, `\t`, `\r`) is automatically sanitized by prefixing with a single quote (`'`).
 
+---
+
+## 6. Phase 5 High-Performance Search, Redis Cache-Aside & Telemetry Architecture
+
+### 6.1 PostgreSQL GIN Trigram Index Optimization (`pg_trgm`)
+To support instantaneous multi-criteria product searches across thousands of SKUs and product variants without sequential table scans:
+- PostgreSQL extension `pg_trgm` is enabled via Prisma migration `20261105110000_phase5_search_trgm_and_analytics_indexes`.
+- GIN Trigram indexes (`USING gin (... gin_trgm_ops)`) are deployed on:
+  - `products.name`
+  - `products.description`
+  - `product_variants.sku`
+  - `product_variants.name`
+- B-Tree composite indexes accelerate price range filtering, product creation sorting, and balance lookups.
+
+### 6.2 Redis Cache-Aside Architecture (`CacheManager`)
+All expensive read queries (Search results and Analytics aggregations) implement the Cache-Aside pattern:
+1. **Cache Lookup:** When a request arrives, `cacheManager.get(key)` is checked.
+2. **Cache Hit:** If found, the pre-serialized JSON payload is returned immediately (sub-12ms response time), offloading 100% of the workload from PostgreSQL.
+3. **Cache Miss:** If absent or expired, the query executes against PostgreSQL, and the result is stored in Redis (`cacheManager.set(key, data, { ttlSeconds, jitterSeconds })`).
+4. **Canonical Query Key Hashing:** Reordered query parameters (e.g. `?limit=20&q=box` vs `?q=box&limit=20`) are recursively key-sorted and hashed with SHA-256 (`csm:v1:{namespace}:{scope}:{hash}`), ensuring optimal cache density.
+5. **Anti-Stampede TTL Jitter:** A randomized variance (+/- 10-15s) is applied to TTL expirations, preventing simultaneous cache stampedes.
+6. **Role-Based Cache Isolation:** Unit cost prices (`costPrice`) and financial margins are never primed into cache keys accessible to `STAFF`, strictly preventing privilege leakage across roles.
+7. **Graceful Degradation:** If Redis becomes unavailable, queries fall through silently to PostgreSQL with warning telemetry without failing the HTTP request.
+
+### 6.3 Post-Commit Selective Invalidation
+- Invalidation hooks are strictly executed **after** database transactions commit (`prisma.$transaction`).
+- Key-pattern SCAN eviction (`csm:v1:{namespace}:*`) removes stale catalog and inventory entries without executing `FLUSHALL` or `FLUSHDB`, ensuring BullMQ queues and active user refresh sessions are protected.
+
+### 6.4 Distributed Sliding-Window Rate Limiting
+- Redis atomic counters throttle high-cost operations:
+  - Product Search: 60 requests/minute per caller.
+  - Analytics Reports: 30 requests/minute per caller.
+  - CSV/XLSX Bulk Export: 10 requests/minute per caller.
+- Excessive traffic receives HTTP `429 Too Many Requests` accompanied by standard `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+
+

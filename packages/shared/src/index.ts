@@ -81,6 +81,10 @@ export enum AuditAction {
   CREATE_IMPORT_JOB = 'CREATE_IMPORT_JOB',
   COMPLETE_IMPORT_JOB = 'COMPLETE_IMPORT_JOB',
   FAIL_IMPORT_JOB = 'FAIL_IMPORT_JOB',
+
+  // Phase 5 Cache & Performance Audit Actions
+  CLEAR_CACHE = 'CLEAR_CACHE',
+  RUN_BENCHMARK = 'RUN_BENCHMARK',
 }
 
 // Standard API Response Envelope
@@ -349,4 +353,180 @@ export interface ImportJob {
     email: string;
   };
 }
+
+// ========================================================
+// Phase 5 Search, Analytics, Performance & Cache Types
+// ========================================================
+
+export interface SearchProductsQuery {
+  q?: string;
+  categoryId?: string;
+  warehouseId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  stockStatus?: StockStatus;
+  isActive?: boolean;
+  createdFrom?: string;
+  createdTo?: string;
+  sortBy?: 'name' | 'createdAt' | 'price' | 'totalStock';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface ProductSearchVariantItem {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  costPrice?: number | null; // Scrubbed / omitted for STAFF
+  stockQuantity: number;
+  stockStatus: StockStatus;
+  attributes?: Record<string, string> | null;
+}
+
+export interface ProductSearchItem {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  categoryId: string;
+  categoryName: string;
+  isActive: boolean;
+  createdAt: string;
+  primaryImageUrl: string | null;
+  minPrice: number;
+  maxPrice: number;
+  totalStock: number;
+  stockStatus: StockStatus;
+  variantsCount: number;
+  variants: ProductSearchVariantItem[];
+}
+
+export interface ProductSearchResponse {
+  items: ProductSearchItem[];
+  pagination: PaginationMeta;
+  meta: {
+    searchDurationMs: number;
+    cached: boolean;
+    totalMatches: number;
+  };
+}
+
+export interface AnalyticsSummary {
+  totalProducts: number;
+  totalVariants: number;
+  totalWarehouses: number;
+  totalStock: number;
+  totalInventoryCostValue: number | null; // Scrubbed for STAFF
+  totalRetailValue: number;
+  nullCostPriceCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  pendingDocumentsCount: number;
+  calculatedAt: string;
+  cached?: boolean;
+}
+
+export interface CategoryDistributionItem {
+  categoryId: string;
+  categoryName: string;
+  productCount: number;
+  variantCount: number;
+  totalStock: number;
+  costValue?: number | null; // Scrubbed for STAFF
+  retailValue: number;
+}
+
+export interface WarehouseDistributionItem {
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  skuCount: number;
+  totalStock: number;
+  costValue?: number | null; // Scrubbed for STAFF
+  retailValue: number;
+}
+
+export interface StockTrendItem {
+  date: string; // YYYY-MM-DD
+  inboundQty: number;
+  outboundQty: number;
+  adjustmentQty: number;
+  transferQty: number;
+}
+
+export interface TopStockedSkuItem {
+  variantId: string;
+  sku: string;
+  variantName: string;
+  productName: string;
+  categoryName: string;
+  price: number;
+  totalStock: number;
+  warehouseBreakdown: Array<{
+    warehouseId: string;
+    warehouseName: string;
+    quantity: number;
+  }>;
+}
+
+export interface LowStockAlertItem {
+  variantId: string;
+  sku: string;
+  variantName: string;
+  productName: string;
+  categoryName: string;
+  totalStock: number;
+  minThreshold: number;
+  deficit: number;
+  alertLevel: 'OUT_OF_STOCK' | 'CRITICAL' | 'WARNING';
+  warehouses: Array<{
+    warehouseId: string;
+    warehouseName: string;
+    quantity: number;
+    minThreshold: number;
+  }>;
+}
+
+export interface InventoryValueBreakdown {
+  totalCostValue: number;
+  totalRetailValue: number;
+  potentialGrossMargin: number;
+  marginPercentage: number;
+  breakdownByCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    costValue: number;
+    retailValue: number;
+    marginPercentage: number;
+  }>;
+  breakdownByWarehouse: Array<{
+    warehouseId: string;
+    warehouseName: string;
+    costValue: number;
+    retailValue: number;
+  }>;
+}
+
+export interface SystemPerformanceMetrics {
+  cacheHits: number;
+  cacheMisses: number;
+  totalCacheRequests: number;
+  hitRatePercentage: number;
+  redisErrors: number;
+  redisStatus: 'ready' | 'connecting' | 'reconnecting' | 'degraded' | 'offline';
+  dbLatencyMs: number;
+  redisLatencyMs: number;
+  latencyStats: {
+    p50Ms: number;
+    p95Ms: number;
+    p99Ms: number;
+    avgMs: number;
+    sampleCount: number;
+  };
+  uptimeSeconds: number;
+  timestamp: string;
+}
+
 

@@ -136,3 +136,28 @@ All HTTP endpoints return responses structured with the standard ApiResponse env
 - `GET   /api/v1/imports/:id/errors`: Download error report CSV containing failed row numbers and validation failure explanations (**ADMIN, MANAGER**).
 - `GET   /api/v1/imports/template`: Download sample product catalog CSV or XLSX template (**ADMIN, MANAGER**).
 
+---
+
+## 5. Endpoints Implemented in Phase 5 (Search, Cache-Aside, Analytics & Telemetry)
+
+### 5.1 Advanced Product Search Module (`/api/v1/search`)
+- `GET /api/v1/search/products`: High-performance multi-criteria search accelerated by PostgreSQL GIN trigram indexes and Redis Cache-Aside (`csm:v1:search:...`).
+  - **Query Params:** `q`, `categoryId`, `warehouseId`, `minPrice`, `maxPrice`, `stockStatus` (`IN_STOCK`, `LOW_STOCK`, `OUT_OF_STOCK`), `isActive`, `createdFrom`, `createdTo`, `sortBy`, `sortOrder`, `page`, `limit`.
+  - **Rate Limiting:** 60 requests/minute. Exceeding returns `429 Too Many Requests` with `Retry-After`.
+  - **Role Isolation:** Unit cost prices (`costPrice`) are scrubbed for `STAFF` callers.
+  - **Access:** **ADMIN, MANAGER, STAFF**.
+
+### 5.2 Executive Analytics & Intelligence Module (`/api/v1/analytics`)
+- `GET /api/v1/analytics/summary`: High-level inventory KPI summary (total products, active SKUs, facilities, units in stock, retail value, low stock counts, pending documents). Role isolated: `totalInventoryCostValue` is masked as `null` for `STAFF` (**ADMIN, MANAGER, STAFF**).
+- `GET /api/v1/analytics/products-by-category`: Stock volumes, product counts, and valuations aggregated by category (**ADMIN, MANAGER, STAFF**).
+- `GET /api/v1/analytics/stock-by-warehouse`: SKU count, total units, and values grouped by facility (**ADMIN, MANAGER, STAFF**).
+- `GET /api/v1/analytics/inventory-value`: Deep financial valuation (Cost value, Retail value, Gross margin, Margin %) with category and warehouse breakdowns (**ADMIN, MANAGER only**; `STAFF` gets `403 Forbidden`).
+- `GET /api/v1/analytics/stock-trends`: Chronological stock movement flow (Inbound, Outbound, Adjustments, Transfers) grouped by day. Transfers are counted unidirectionally to prevent double-counting (**ADMIN, MANAGER, STAFF**).
+- `GET /api/v1/analytics/top-stocked-products`: Top N inventory SKUs by volume with warehouse distribution (**ADMIN, MANAGER, STAFF**).
+- `GET /api/v1/analytics/low-stock`: Critical depleted SKU watchlist with deficit calculations (**ADMIN, MANAGER, STAFF**).
+
+### 5.3 System Performance & Cache Telemetry (`/api/v1/system`)
+- `GET  /api/v1/system/performance`: Real-time telemetry reporting cache hits, misses, hit rate percentage, Redis/Postgres ping latency, and response latency percentiles (P50, P95, P99) (**ADMIN only**).
+- `POST /api/v1/system/cache/clear`: Manually purges application cache keys via SCAN without flushing BullMQ or Session data. Records `CLEAR_CACHE` in security audit trail (**ADMIN only**).
+
+

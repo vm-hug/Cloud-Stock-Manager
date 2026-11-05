@@ -22,6 +22,8 @@ import { StockDocumentDetailPage } from './pages/stock-documents/StockDocumentDe
 import { ApprovalQueuePage } from './pages/stock-documents/ApprovalQueuePage';
 import { StockMovementsPage } from './pages/stock-movements/StockMovementsPage';
 import { ImportExportPage } from './pages/import-export/ImportExportPage';
+import { DashboardPage } from './pages/dashboard/DashboardPage';
+import { PerformancePage } from './pages/performance/PerformancePage';
 import { Role } from '@cloud-stock/shared';
 
 export const App: React.FC = () => {
@@ -36,6 +38,9 @@ export const App: React.FC = () => {
           {/* Authenticated Workspace Routes */}
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
+              {/* Executive Analytics Dashboard */}
+              <Route path="/dashboard" element={<DashboardPage />} />
+
               {/* Profile accessible to all authenticated roles */}
               <Route path="/profile" element={<ProfilePage />} />
 
@@ -64,10 +69,11 @@ export const App: React.FC = () => {
                 <Route path="/users" element={<UsersPage />} />
               </Route>
 
-              {/* Security Audit Logs accessible to ADMIN only */}
+              {/* Security Audit Logs & System Telemetry accessible to ADMIN only */}
               <Route element={<RoleRoute allowedRoles={[Role.ADMIN]} />}>
                 <Route path="/audit-logs" element={<AuditLogsPage />} />
                 <Route path="/system/health" element={<SystemHealthPage />} />
+                <Route path="/system/performance" element={<PerformancePage />} />
               </Route>
             </Route>
           </Route>

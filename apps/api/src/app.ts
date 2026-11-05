@@ -13,6 +13,8 @@ import { systemController } from './modules/system/system.controller';
 import catalogRoutes from './modules/catalog/catalog.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import importsRoutes from './modules/imports/imports.routes';
+import { searchRoutes } from './modules/search/search.routes';
+import { analyticsRoutes } from './modules/analytics/analytics.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -56,6 +58,8 @@ export function createApp(): Application {
   app.use('/api/v1', catalogRoutes);
   app.use('/api/v1', inventoryRoutes);
   app.use('/api/v1', importsRoutes);
+  app.use('/api/v1/search', searchRoutes);
+  app.use('/api/v1/analytics', analyticsRoutes);
 
   // Catch-all 404 for undefined routes
   app.use((_req: Request, _res: Response, next: NextFunction) => {

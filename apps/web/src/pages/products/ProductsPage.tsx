@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Category, Product } from '@cloud-stock/shared';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Category, Product, Warehouse, StockStatus } from '@cloud-stock/shared';
 import { catalogApi } from '../../features/catalog/catalog.api';
+import { searchApi } from '../../features/search/search.api';
+import { inventoryApi } from '../../features/inventory/inventory.api';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   Package,
@@ -9,7 +11,6 @@ import {
   Plus,
   Edit2,
   Trash2,
-  RotateCcw,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -20,26 +21,42 @@ import {
   X,
   RefreshCw,
   ImageIcon,
+  Zap,
+  SlidersHorizontal,
 } from 'lucide-react';
 import './ProductsPage.scss';
 
 export const ProductsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { role } = useAuth();
   const canManage = role === 'ADMIN' || role === 'MANAGER';
 
-  const [products, setProducts] = useState<Product[]>([]);
+  // Catalog & Search State
+  const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & Pagination
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'deleted'>('all');
-  const [page, setPage] = useState(1);
+  // Search & Filter Parameters (synced with URL)
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('q') || '');
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('categoryId') || '');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(searchParams.get('warehouseId') || '');
+  const [selectedStockStatus, setSelectedStockStatus] = useState<string>(searchParams.get('stockStatus') || '');
+  const [minPrice, setMinPrice] = useState<string>(searchParams.get('minPrice') || '');
+  const [maxPrice, setMaxPrice] = useState<string>(searchParams.get('maxPrice') || '');
+  const [sortBy, setSortBy] = useState<string>(searchParams.get('sortBy') || 'name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>((searchParams.get('sortOrder') as any) || 'asc');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Pagination & Meta
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [searchDurationMs, setSearchDurationMs] = useState<number | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,59 +72,95 @@ export const ProductsPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Load categories for filter dropdown & create modal
-  const fetchCategories = async () => {
-    try {
-      const res = await catalogApi.getCategories({ limit: 100 });
-      if (res.success && res.data) {
-        setCategories(res.data);
-      }
-    } catch {
-      // Non-blocking
-    }
-  };
-
+  // Debounce search input by 300ms
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    fetchCategories();
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 300);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [searchTerm]);
+
+  // Load categories and warehouses for filter dropdowns
+  useEffect(() => {
+    async function loadMetadata() {
+      try {
+        const [catRes, whRes] = await Promise.all([
+          catalogApi.getCategories({ limit: 100 }),
+          inventoryApi.getWarehouses({ limit: 100 }),
+        ]);
+        if (catRes.success && catRes.data) setCategories(catRes.data);
+        if (whRes.success && whRes.data) setWarehouses(whRes.data.filter((w: Warehouse) => w.isActive));
+      } catch {
+        // Non-blocking
+      }
+    }
+    loadMetadata();
   }, []);
 
+  // Fetch products via Phase 5 high-performance search API
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
+
+    // Sync state with URL params
+    const newParams: Record<string, string> = {};
+    if (debouncedSearch) newParams.q = debouncedSearch;
+    if (selectedCategory) newParams.categoryId = selectedCategory;
+    if (selectedWarehouse) newParams.warehouseId = selectedWarehouse;
+    if (selectedStockStatus) newParams.stockStatus = selectedStockStatus;
+    if (minPrice) newParams.minPrice = minPrice;
+    if (maxPrice) newParams.maxPrice = maxPrice;
+    if (sortBy) newParams.sortBy = sortBy;
+    if (sortOrder) newParams.sortOrder = sortOrder;
+    if (page > 1) newParams.page = page.toString();
+    setSearchParams(newParams, { replace: true });
+
     try {
-      let filterActive: boolean | undefined = undefined;
-      let includeDeleted: boolean | undefined = undefined;
-
-      if (statusFilter === 'active') filterActive = true;
-      if (statusFilter === 'inactive') filterActive = false;
-      if (statusFilter === 'deleted') includeDeleted = true;
-
-      const res = await catalogApi.getProducts({
+      const res = await searchApi.searchProducts({
+        q: debouncedSearch.trim() || undefined,
+        categoryId: selectedCategory || undefined,
+        warehouseId: selectedWarehouse || undefined,
+        stockStatus: (selectedStockStatus as StockStatus) || undefined,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        sortBy: sortBy as any,
+        sortOrder,
         page,
         limit,
-        search: search.trim() || undefined,
-        categoryId: selectedCategory || undefined,
-        isActive: filterActive,
-        includeDeleted,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
       });
 
       if (res.success && res.data) {
-        setProducts(res.data);
-        if (res.pagination) {
-          setTotalPages(res.pagination.totalPages);
-          setTotalProducts(res.pagination.total);
-        }
+        setProducts(res.data.items);
+        setTotalPages(res.data.pagination.totalPages);
+        setTotalMatches(res.data.pagination.total);
+        setSearchDurationMs(res.data.meta.searchDurationMs);
+        setIsCached(res.data.meta.cached);
       } else {
-        setErrorMsg(res.error?.message || 'Failed to fetch products');
+        setErrorMsg(res.error?.message || 'Failed to search product catalog');
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error fetching products');
+      setErrorMsg(err instanceof Error ? err.message : 'Error executing search query');
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, selectedCategory, statusFilter]);
+  }, [
+    debouncedSearch,
+    selectedCategory,
+    selectedWarehouse,
+    selectedStockStatus,
+    minPrice,
+    maxPrice,
+    sortBy,
+    sortOrder,
+    page,
+    limit,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     fetchProducts();
@@ -124,7 +177,7 @@ export const ProductsPage: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleOpenEditModal = (prod: Product) => {
+  const handleOpenEditModal = (prod: any) => {
     setEditingProduct(prod);
     setName(prod.name);
     setCategoryId(prod.categoryId);
@@ -195,7 +248,7 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleSoftDelete = async (prod: Product) => {
+  const handleSoftDelete = async (prod: any) => {
     if (!canManage) return;
     if (
       !window.confirm(
@@ -218,19 +271,8 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleRestore = async (prod: Product) => {
-    if (!canManage) return;
-    try {
-      const res = await catalogApi.restoreProduct(prod.id);
-      if (res.success) {
-        setSuccessMsg(`Product '${prod.name}' restored successfully.`);
-        fetchProducts();
-      } else {
-        setErrorMsg(res.error?.message || 'Failed to restore product');
-      }
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error restoring product');
-    }
+  const formatCurrency = (num: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
   };
 
   return (
@@ -238,9 +280,9 @@ export const ProductsPage: React.FC = () => {
       {/* Page Header */}
       <div className="page-header-actions">
         <div className="header-left">
-          <h2 className="title">Products & SKUs</h2>
+          <h2 className="title">High-Performance Product Search & SKUs</h2>
           <p className="description">
-            Manage product catalog, multi-SKU variants, and Cloudinary media assets
+            Accelerated via PostgreSQL GIN trigram indexes and Redis Cache-Aside with multi-criteria filtering
           </p>
         </div>
 
@@ -273,58 +315,183 @@ export const ProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filters Bar */}
-      <div className="filters-bar">
-        <div className="search-box">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search by product name, slug, SKU..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
+      {/* Search Bar & Main Controls */}
+      <div className="search-control-container">
+        <div className="main-search-row">
+          <div className="search-input-wrapper">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by product name, slug, description, or SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button className="clear-btn" onClick={() => setSearchTerm('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
-        <div className="filter-select">
-          <label>Category:</label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setPage(1);
-            }}
+          <div className="select-wrapper">
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="select-wrapper">
+            <select
+              value={selectedWarehouse}
+              onChange={(e) => {
+                setSelectedWarehouse(e.target.value);
+                setPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="">All Warehouses</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({w.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className={`filter-toggle-btn ${showAdvancedFilters ? 'active' : ''}`}
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            title="Toggle advanced criteria filters"
           >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <SlidersHorizontal size={16} />
+            <span>Filters</span>
+          </button>
+
+          <button className="refresh-btn" onClick={fetchProducts} title="Refresh">
+            <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+          </button>
         </div>
 
-        <div className="filter-select">
-          <label>Status:</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as any);
-              setPage(1);
-            }}
-          >
-            <option value="all">Active & Inactive</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
-            <option value="deleted">Include Deleted</option>
-          </select>
-        </div>
+        {/* Collapsible Advanced Criteria Bar */}
+        {showAdvancedFilters && (
+          <div className="advanced-filter-drawer">
+            <div className="filter-item">
+              <label>Stock Status</label>
+              <select
+                value={selectedStockStatus}
+                onChange={(e) => {
+                  setSelectedStockStatus(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Any Stock Status</option>
+                <option value="IN_STOCK">In Stock</option>
+                <option value="LOW_STOCK">Low Stock</option>
+                <option value="OUT_OF_STOCK">Out of Stock</option>
+              </select>
+            </div>
 
-        <button className="refresh-btn" onClick={fetchProducts} title="Refresh">
-          <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-        </button>
+            <div className="filter-item">
+              <label>Min Price ($)</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={minPrice}
+                onChange={(e) => {
+                  setMinPrice(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div className="filter-item">
+              <label>Max Price ($)</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="1000"
+                value={maxPrice}
+                onChange={(e) => {
+                  setMaxPrice(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div className="filter-item">
+              <label>Sort By</label>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="name">Product Name</option>
+                <option value="createdAt">Date Created</option>
+                <option value="price">Selling Price</option>
+                <option value="totalStock">Total Stock</option>
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label>Order</label>
+              <select
+                value={sortOrder}
+                onChange={(e) => {
+                  setSortOrder(e.target.value as any);
+                  setPage(1);
+                }}
+              >
+                <option value="asc">Ascending (A-Z, Low-High)</option>
+                <option value="desc">Descending (Z-A, High-Low)</option>
+              </select>
+            </div>
+
+            {(selectedStockStatus || minPrice || maxPrice || sortBy !== 'name') && (
+              <button
+                className="reset-filters-btn"
+                onClick={() => {
+                  setSelectedStockStatus('');
+                  setMinPrice('');
+                  setMaxPrice('');
+                  setSortBy('name');
+                  setSortOrder('asc');
+                  setPage(1);
+                }}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Telemetry / Search Performance Badge */}
+        {searchDurationMs !== null && (
+          <div className="search-meta-badge">
+            <Zap size={14} className="zap-icon" />
+            <span>
+              Found <strong>{totalMatches}</strong> match{totalMatches !== 1 ? 'es' : ''} in{' '}
+              <strong>{searchDurationMs} ms</strong>
+            </span>
+            <span className={`cache-tag ${isCached ? 'cached' : 'miss'}`}>
+              {isCached ? 'Redis Cache Hit' : 'PostgreSQL GIN Query'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Product Table Card */}
@@ -332,13 +499,13 @@ export const ProductsPage: React.FC = () => {
         {loading ? (
           <div className="loading-state">
             <RefreshCw className="spinner" size={28} />
-            <p>Loading catalog items...</p>
+            <p>Querying products and live balances...</p>
           </div>
         ) : products.length === 0 ? (
           <div className="empty-state">
             <Package size={40} className="empty-icon" />
-            <h3>No products found</h3>
-            <p>Try refining your filters or create your first product above.</p>
+            <h3>No matching products</h3>
+            <p>Try broadening your query keywords or adjusting the filter criteria above.</p>
           </div>
         ) : (
           <>
@@ -346,28 +513,25 @@ export const ProductsPage: React.FC = () => {
               <table className="custom-table">
                 <thead>
                   <tr>
-                    <th>Product</th>
+                    <th>Product & SKU</th>
                     <th>Category</th>
-                    <th>Variants</th>
-                    <th>Status</th>
-                    <th>Created</th>
+                    <th>Price Range</th>
+                    <th>Total Stock</th>
+                    <th>Stock Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((prod) => {
-                    const primaryImg = prod.images?.[0];
-                    const isDeleted = Boolean(prod.deletedAt);
-
                     return (
-                      <tr key={prod.id} className={isDeleted ? 'row-deleted' : ''}>
+                      <tr key={prod.id}>
                         <td>
                           <div className="product-cell">
                             <div className="thumb-container">
-                              {primaryImg ? (
+                              {prod.primaryImageUrl ? (
                                 <img
-                                  src={primaryImg.url}
-                                  alt={primaryImg.altText || prod.name}
+                                  src={prod.primaryImageUrl}
+                                  alt={prod.name}
                                   className="product-thumb"
                                   onError={(e) => {
                                     (e.target as HTMLElement).style.display = 'none';
@@ -386,48 +550,50 @@ export const ProductsPage: React.FC = () => {
                               >
                                 {prod.name}
                               </span>
-                              <code className="slug-text">{prod.slug}</code>
+                              <div className="slug-row">
+                                <code className="slug-text">{prod.slug}</code>
+                                <span className="variants-tag">
+                                  {prod.variantsCount} SKU{prod.variantsCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
                         <td>
                           <span className="category-tag">
                             <Layers size={13} />
-                            <span>{prod.category?.name || 'Unassigned'}</span>
+                            <span>{prod.categoryName || 'Unassigned'}</span>
                           </span>
                         </td>
                         <td>
-                          <span className="variant-count-pill">
-                            {prod._count?.variants ?? 0} SKU(s)
-                          </span>
+                          <strong>
+                            {prod.minPrice === prod.maxPrice
+                              ? formatCurrency(prod.minPrice)
+                              : `${formatCurrency(prod.minPrice)} – ${formatCurrency(prod.maxPrice)}`}
+                          </strong>
                         </td>
                         <td>
-                          {isDeleted ? (
-                            <span className="status-pill deleted">Soft Deleted</span>
-                          ) : prod.isActive ? (
-                            <span className="status-pill active">
-                              <CheckCircle size={12} /> Active
-                            </span>
-                          ) : (
-                            <span className="status-pill inactive">
-                              <XCircle size={12} /> Inactive
-                            </span>
-                          )}
+                          <strong>{prod.totalStock.toLocaleString()}</strong> units
                         </td>
-                        <td className="text-muted">
-                          {new Date(prod.createdAt).toLocaleDateString()}
+                        <td>
+                          <span className={`status-pill ${prod.stockStatus.toLowerCase()}`}>
+                            {prod.stockStatus === 'IN_STOCK' && <CheckCircle size={12} />}
+                            {prod.stockStatus === 'LOW_STOCK' && <AlertCircle size={12} />}
+                            {prod.stockStatus === 'OUT_OF_STOCK' && <XCircle size={12} />}
+                            <span>{prod.stockStatus.replace('_', ' ')}</span>
+                          </span>
                         </td>
                         <td>
                           <div className="action-buttons">
                             <button
                               className="icon-action-btn view"
                               onClick={() => navigate(`/products/${prod.id}`)}
-                              title="View Detail & Manage SKUs"
+                              title="View Product Detail & SKUs"
                             >
                               <ExternalLink size={15} />
                             </button>
 
-                            {canManage && !isDeleted && (
+                            {canManage && (
                               <>
                                 <button
                                   className="icon-action-btn edit"
@@ -445,16 +611,6 @@ export const ProductsPage: React.FC = () => {
                                 </button>
                               </>
                             )}
-
-                            {canManage && isDeleted && (
-                              <button
-                                className="icon-action-btn restore"
-                                onClick={() => handleRestore(prod)}
-                                title="Restore Product"
-                              >
-                                <RotateCcw size={15} />
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -464,27 +620,27 @@ export const ProductsPage: React.FC = () => {
               </table>
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Bar */}
             <div className="pagination-bar">
-              <span className="pagination-info">
-                Showing {products.length} of {totalProducts} products
+              <span className="page-info">
+                Showing Page {page} of {totalPages} ({totalMatches} total products)
               </span>
-              <div className="pagination-nav">
+
+              <div className="pagination-actions">
                 <button
                   className="page-btn"
                   disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 >
                   <ChevronLeft size={16} />
+                  <span>Previous</span>
                 </button>
-                <span className="page-current">
-                  Page {page} of {totalPages}
-                </span>
                 <button
                   className="page-btn"
                   disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                 >
+                  <span>Next</span>
                   <ChevronRight size={16} />
                 </button>
               </div>
@@ -493,89 +649,90 @@ export const ProductsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Create / Edit Modal */}
+      {/* Create / Edit Product Modal */}
       {modalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-container">
+        <div className="modal-overlay">
+          <div className="modal-dialog">
             <div className="modal-header">
               <h3>{editingProduct ? 'Edit Product' : 'Create New Product'}</h3>
-              <button className="modal-close" onClick={handleCloseModal}>
+              <button className="close-btn" onClick={handleCloseModal}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="modal-form">
-              <div className="form-group">
-                <label>Product Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Cotton T-Shirt, Cloud Gateway Router..."
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Category *</label>
-                <select
-                  required
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                >
-                  <option value="" disabled>
-                    -- Select Category --
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.isActive ? '' : '(Inactive)'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Slug Identifier (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="Leave blank to auto-generate"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  rows={3}
-                  placeholder="Product specifications and features..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group checkbox-group">
-                <label className="checkbox-label">
+            <form onSubmit={handleSaveProduct}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>
+                    Product Name <span className="req">*</span>
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Wireless Barcode Scanner"
                   />
-                  <span>Active Product</span>
-                </label>
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Category <span className="req">*</span>
+                  </label>
+                  <select
+                    required
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select a category
+                    </option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Custom Slug (Optional)</label>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="auto-generated-if-empty"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Description (Optional)</label>
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Product specifications, features, or notes..."
+                  />
+                </div>
+
+                <div className="form-group-checkbox">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                    />
+                    <span>Active in Product Catalog</span>
+                  </label>
+                </div>
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                >
+              <div className="modal-footer">
+                <button type="button" className="btn-cancel" onClick={handleCloseModal}>
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Create & Add SKUs'}
+                <button type="submit" className="btn-submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Create Product'}
                 </button>
               </div>
             </form>

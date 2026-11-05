@@ -154,6 +154,10 @@ Các quy tắc sau đây là **BẤT BIẾN BẮT BUỘC**, không được phé
 31. **Điều chỉnh kiểm kê có dấu (Signed Inventory Adjustment):** Phiếu kiểm kê/điều chỉnh (`ADJUSTMENT`) sử dụng trường `adjustment_delta` kiểu số nguyên có dấu khác 0 (`adjustment_delta <> 0`) để ghi nhận chênh lệch thừa/thiếu. Không ép số âm vào trường `quantity` vốn bị chặn bởi check constraint `quantity > 0`.
 32. **Phòng chống tấn công Formula Injection:** Mọi trường dữ liệu văn bản xuất ra file báo cáo CSV/Excel (như tên SKU, tên sản phẩm, mã kho) nếu bắt đầu bằng các ký tự công thức (`=`, `+`, `-`, `@`, `\t`, `\r`) bắt buộc phải được tiền tố bằng dấu nháy đơn (`'`).
 33. **Xử lý nền BullMQ với Redis noeviction:** Các tác vụ import file danh mục lớn bắt buộc được xử lý bất đồng bộ qua hàng đợi BullMQ với kết nối Redis riêng (`maxRetriesPerRequest: null`). Báo cáo lỗi được sinh thành file CSV lưu trữ bền vững để tải về.
+34. **Redis Cache-Aside & Role Isolation:** Redis chỉ lưu trữ các kết quả đọc đã được chuẩn hóa theo quyền hạn người dùng. Dữ liệu tài chính nhạy cảm như giá vốn (`costPrice`) hay tỷ suất lợi nhuận biên (`grossMargin`) tuyệt đối không được cache chung hoặc rò rỉ cho vai trò `STAFF`.
+35. **Hủy Cache sau Commit (Post-Commit Invalidation):** Mọi thao tác hủy cache (invalidation) bắt buộc phải thực thi **sau khi** database transaction đã commit thành công. Tuyệt đối không hủy cache trước hoặc trong transaction.
+36. **Thu hồi Cache có chọn lọc (Scan-based Selective Eviction):** Thu hồi cache chỉ được thực hiện bằng lệnh SCAN theo tiền tố namespace (`csm:v1:...`). Nghiêm cấm sử dụng `FLUSHALL` hoặc `FLUSHDB` trên Redis để không làm mất phiên đăng nhập người dùng hoặc hàng đợi nền BullMQ.
+37. **Giới hạn tốc độ phân tán (Distributed Rate Limiting):** Áp dụng rate limiting phân tán qua Redis cho các endpoint tốn tài nguyên (Tìm kiếm: 60 req/phút, Báo cáo Analytics: 30 req/phút, Xuất dữ liệu: 10 req/phút) kèm header `Retry-After` và trả về mã lỗi HTTP 429 khi vượt ngưỡng.
 
 ---
 

@@ -2,7 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/db';
 import { redis } from '../../config/redis';
 import { env } from '../../config/env';
-import { SystemHealthStatus } from '@cloud-stock/shared';
+import { SystemHealthStatus, SystemPerformanceMetrics, AuditAction } from '@cloud-stock/shared';
+import { metricsTracker } from '../../common/metrics/metricsTracker';
+import { cacheManager } from '../../common/cache/cacheManager';
+import { auditService } from '../audit/audit.service';
 
 export class SystemController {
   /**
@@ -47,7 +50,6 @@ export class SystemController {
    */
   getDetailedHealth = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // 1. Measure DB ping latency
       let dbStatus: 'up' | 'down' = 'down';
       let dbLatency = -1;
       try {
@@ -59,7 +61,6 @@ export class SystemController {
         dbStatus = 'down';
       }
 
-      // 2. Measure Redis ping latency
       let redisStatus: 'up' | 'down' = 'down';
       let redisLatency = -1;
       try {
@@ -73,7 +74,6 @@ export class SystemController {
         redisStatus = 'down';
       }
 
-      // 3. Memory statistics
       const memory = process.memoryUsage();
       const heapUsedMb = Math.round((memory.heapUsed / 1024 / 1024) * 100) / 100;
       const heapTotalMb = Math.round((memory.heapTotal / 1024 / 1024) * 100) / 100;
@@ -112,6 +112,92 @@ export class SystemController {
       });
     } catch (error) {
       next(error);
+    }
+  };
+
+  /**
+   * Performance & Cache Telemetry (ADMIN only)
+   */
+  getPerformanceMetrics = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      let dbLatencyMs = -1;
+      try {
+        const start = performance.now();
+        await prisma.$queryRaw`SELECT 1`;
+        dbLatencyMs = Math.round(performance.now() - start);
+      } catch {
+        dbLatencyMs = -1;
+      }
+
+      let redisLatencyMs = -1;
+      try {
+        const start = performance.now();
+        await redis.ping();
+        redisLatencyMs = Math.round(performance.now() - start);
+      } catch {
+        redisLatencyMs = -1;
+      }
+
+      const rawMetrics = metricsTracker.getMetrics();
+      const redisStatus =
+        redis.status === 'ready'
+          ? 'ready'
+          : redis.status === 'connecting'
+            ? 'connecting'
+            : redis.status === 'reconnecting'
+              ? 'reconnecting'
+              : 'offline';
+
+      const data: SystemPerformanceMetrics = {
+        cacheHits: rawMetrics.cacheHits,
+        cacheMisses: rawMetrics.cacheMisses,
+        totalCacheRequests: rawMetrics.totalCacheRequests,
+        hitRatePercentage: rawMetrics.hitRatePercentage,
+        redisErrors: rawMetrics.redisErrors,
+        redisStatus,
+        dbLatencyMs,
+        redisLatencyMs,
+        latencyStats: rawMetrics.latencyStats,
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: rawMetrics.timestamp,
+      };
+
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * Manually purge all application caches (ADMIN only)
+   */
+  clearCache = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const keysCleared = await cacheManager.clearAllCaches();
+
+      await auditService.recordLog({
+        actorId: req.user?.id || null,
+        action: AuditAction.CLEAR_CACHE,
+        entityType: 'SYSTEM_CACHE',
+        entityId: 'ALL',
+        metadata: { keysCleared },
+        ipAddress: req.ip || req.socket.remoteAddress,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully purged ${keysCleared} cache keys.`,
+        data: { keysCleared },
+      });
+    } catch (err) {
+      next(err);
     }
   };
 }

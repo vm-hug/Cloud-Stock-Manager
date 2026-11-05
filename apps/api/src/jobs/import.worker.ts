@@ -8,6 +8,7 @@ import { ProductImportJobData } from './import.queue';
 import { ImportJobStatus, Prisma } from '@prisma/client';
 import { AuditAction } from '@cloud-stock/shared';
 import { auditService } from '../modules/audit/audit.service';
+import { cacheManager } from '../common/cache/cacheManager';
 
 interface RowError {
   rowNumber: number;
@@ -316,6 +317,10 @@ export function createImportWorker(): Worker<ProductImportJobData> {
             status: finalStatus,
           },
         });
+
+        if (processedCount > 0) {
+          await cacheManager.invalidateCatalog();
+        }
 
         console.log(
           `[ImportWorker] Job ${importJobId} finished with status ${finalStatus}. Processed: ${processedCount}, Failed: ${failedCount}.`

@@ -3,6 +3,7 @@ import { Role } from '@cloud-stock/shared';
 import { authenticate } from '../../common/middleware/authenticate';
 import { requireRoles } from '../../common/middleware/authorize';
 import { validateRequest } from '../../common/middleware/validateRequest';
+import { exportRateLimiter } from '../../common/middleware/rateLimiter';
 import { inventoryController } from './inventory.controller';
 import {
   balanceQuerySchema,
@@ -112,6 +113,7 @@ router.get(
 router.get(
   '/inventory/export',
   requireRoles([Role.ADMIN, Role.MANAGER, Role.STAFF]),
+  exportRateLimiter,
   validateRequest({ query: exportInventoryQuerySchema }),
   inventoryController.exportBalances
 );

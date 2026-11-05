@@ -16,6 +16,7 @@
     "build": "npm run build:shared && npm run build:api && npm run build:web",
     "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace=@cloud-stock/api",
+    "benchmark": "npm run benchmark --workspace=@cloud-stock/api",
     "db:generate": "npm run prisma:generate --workspace=@cloud-stock/api",
     "db:migrate": "npm run prisma:migrate --workspace=@cloud-stock/api",
     "db:deploy": "npm run prisma:deploy --workspace=@cloud-stock/api",

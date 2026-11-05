@@ -17,6 +17,7 @@ import {
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../common/errors/appError';
 import { auditService } from '../audit/audit.service';
 import { prisma } from '../../config/db';
+import { cacheManager } from '../../common/cache/cacheManager';
 
 export class InventoryService {
   constructor(private repo: InventoryRepository = inventoryRepository) {}
@@ -41,6 +42,8 @@ export class InventoryService {
       metadata: { code: warehouse.code, name: warehouse.name },
       ipAddress,
     });
+
+    await cacheManager.invalidateInventory();
 
     return warehouse;
   }
@@ -81,6 +84,8 @@ export class InventoryService {
       ipAddress,
     });
 
+    await cacheManager.invalidateInventory();
+
     return updated;
   }
 
@@ -117,6 +122,8 @@ export class InventoryService {
       metadata: { previousStatus: warehouse.isActive, newStatus: isActive },
       ipAddress,
     });
+
+    await cacheManager.invalidateInventory();
 
     return updated;
   }
@@ -185,6 +192,8 @@ export class InventoryService {
       metadata: { warehouseId, variantId, minThreshold: input.minThreshold },
       ipAddress,
     });
+
+    await cacheManager.invalidateInventory();
 
     return updated;
   }
@@ -325,11 +334,16 @@ export class InventoryService {
     let retries = 3;
     while (retries > 0) {
       try {
-        return await this.repo.approveAndPostDocument({
+        const result = await this.repo.approveAndPostDocument({
           documentId: id,
           approverId,
           ipAddress,
         });
+
+        // Invalidate inventory caches post-commit
+        await cacheManager.invalidateInventory();
+
+        return result;
       } catch (err: any) {
         // Retry only on PostgreSQL serialization failure (40001) or deadlock (40P01)
         if ((err.code === '40001' || err.code === '40P01') && retries > 1) {

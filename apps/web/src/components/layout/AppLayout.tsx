@@ -18,6 +18,8 @@ import {
   Clock,
   ArrowRightLeft,
   UploadCloud,
+  BarChart3,
+  Zap,
 } from 'lucide-react';
 import './AppLayout.scss';
 
@@ -32,6 +34,8 @@ export const AppLayout: React.FC = () => {
   };
 
   const getPageTitle = () => {
+    if (location.pathname.startsWith('/dashboard')) return 'Executive Stock Intelligence';
+    if (location.pathname.startsWith('/system/performance')) return 'Redis Cache & Query Telemetry';
     if (location.pathname.startsWith('/warehouses')) return 'Warehouse Network';
     if (location.pathname.startsWith('/inventory/low-stock')) return 'Low Stock Alerts';
     if (location.pathname.startsWith('/inventory')) return 'Warehouse Inventory Balances';
@@ -58,7 +62,7 @@ export const AppLayout: React.FC = () => {
           </div>
           <div>
             <div className="brand-name">Cloud Stock</div>
-            <div className="brand-phase">Phase 4 Inventory</div>
+            <div className="brand-phase">Phase 5 Search & Cache</div>
           </div>
         </div>
 
@@ -66,6 +70,11 @@ export const AppLayout: React.FC = () => {
           <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
             <Home size={18} />
             <span>Architecture Home</span>
+          </NavLink>
+
+          <NavLink to="/dashboard" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <BarChart3 size={18} />
+            <span>Executive Dashboard</span>
           </NavLink>
 
           <div className="nav-label">Warehouse & Inventory</div>
@@ -138,6 +147,11 @@ export const AppLayout: React.FC = () => {
               <NavLink to="/system/health" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <Activity size={18} />
                 <span>Cloud Health</span>
+              </NavLink>
+
+              <NavLink to="/system/performance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <Zap size={18} />
+                <span>Cache & Telemetry</span>
               </NavLink>
             </>
           )}

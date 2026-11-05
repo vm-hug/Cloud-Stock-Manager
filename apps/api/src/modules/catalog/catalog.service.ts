@@ -7,6 +7,7 @@ import {
   verifyCloudinaryResource,
 } from '../../config/cloudinary';
 import { auditService } from '../audit/audit.service';
+import { cacheManager } from '../../common/cache/cacheManager';
 import { catalogRepository, CatalogRepository } from './catalog.repository';
 import {
   CategoryQueryInput,
@@ -68,6 +69,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return category;
   }
 
@@ -101,6 +104,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return updated;
   }
 
@@ -132,6 +137,8 @@ export class CatalogService {
       metadata: { previousStatus: category.isActive, newStatus: isActive },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return updated;
   }
@@ -189,6 +196,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return product;
   }
 
@@ -232,6 +241,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return updated;
   }
 
@@ -251,6 +262,8 @@ export class CatalogService {
       metadata: { name: product.name, deletedAt: deleted.deletedAt },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return deleted;
   }
@@ -277,6 +290,8 @@ export class CatalogService {
       metadata: { name: product.name },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return restored;
   }
@@ -337,6 +352,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return variant;
   }
 
@@ -379,6 +396,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return updated;
   }
 
@@ -407,6 +426,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return deleted;
   }
 
@@ -426,6 +447,8 @@ export class CatalogService {
       metadata: { sku: variant.sku },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return restored;
   }
@@ -500,6 +523,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return image;
   }
 
@@ -526,6 +551,8 @@ export class CatalogService {
       ipAddress,
     });
 
+    await cacheManager.invalidateCatalog();
+
     return updated;
   }
 
@@ -550,6 +577,8 @@ export class CatalogService {
       metadata: { productId, publicId: updated.publicId },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return updated;
   }
@@ -590,6 +619,8 @@ export class CatalogService {
       metadata: { productId, publicId: image.publicId },
       ipAddress,
     });
+
+    await cacheManager.invalidateCatalog();
 
     return { message: 'Image deleted successfully' };
   }
