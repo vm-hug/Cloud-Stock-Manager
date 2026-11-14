@@ -13,8 +13,8 @@ ENV NODE_ENV=production
 FROM base AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/fontend/package.json ./apps/fontend/
 COPY packages/shared/package.json ./packages/shared/
 
 RUN npm ci --include=dev
@@ -44,19 +44,19 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy package manifests & production node_modules
 COPY package.json package-lock.json ./
-COPY apps/api/package.json ./apps/api/
+COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=dependencies /app/apps/backend/node_modules ./apps/backend/node_modules
 
 # Copy built artifacts and Prisma files
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 USER appuser
 
 EXPOSE 5000
 
-CMD ["node", "apps/api/dist/server.js"]
+CMD ["node", "apps/backend/dist/server.js"]

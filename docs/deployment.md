@@ -13,7 +13,7 @@ This document provides complete instructions for deploying Cloud Stock Managemen
            v
   +-------------------------------------------------------+
   | Render Web Service (Docker / Node.js 20)              |
-  | - apps/api (Express Backend Engine)                   |
+  | - apps/backend (Express Backend Engine)               |
   | - Static Frontend Assets (or separate Static Site)    |
   | - Healthcheck: /api/health/live                       |
   +---------------------------+---------------------------+

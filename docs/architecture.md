@@ -38,7 +38,7 @@ Cloud Stock Management is built as a **Modular Monolith** deployed as a single u
 ## 2. Directory & Layering Model
 
 ### Layered Separation within Backend Modules:
-Each backend module in `apps/api/src/modules/<module_name>/` follows a strict 5-layer pattern:
+Each backend module in `apps/backend/src/modules/<module_name>/` follows a strict 5-layer pattern:
 1. **Routes (`<module>.routes.ts`):** Defines URLs, HTTP methods, authentication & RBAC guards, and Zod input validators.
 2. **Controller (`<module>.controller.ts`):** Handles HTTP payload parsing and status responses. Never executes direct database operations.
 3. **Service (`<module>.service.ts`):** Contains business logic, transaction management, and coordinates repository calls.
@@ -158,7 +158,7 @@ Posting vouchers is executed strictly within `prisma.$transaction`:
 - Redis connection options configure `maxRetriesPerRequest: null` for queue stability.
 - Workers run bounded concurrency (2 concurrent jobs), stream and validate rows, check duplicates within file and database, and update `import_jobs` progress in PostgreSQL.
 - Generated error reports are written to disk as CSV files downloadable via `/api/v1/imports/:id/errors`.
-- Standalone worker runner is provided at `apps/api/src/jobs/workerRunner.ts`.
+- Standalone worker runner is provided at `apps/backend/src/jobs/workerRunner.ts`.
 
 ### 5.5 Formula Injection Protection
 When exporting inventory reports to CSV or Excel, any text value starting with spreadsheet formula trigger characters (`=`, `+`, `-`, `@`, `\t`, `\r`) is automatically sanitized by prefixing with a single quote (`'`).

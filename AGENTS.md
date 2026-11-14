@@ -15,8 +15,8 @@
 
 ### Tech Stack cốt lõi:
 1. **Monorepo:** npm workspaces kết hợp TypeScript tooling thống nhất.
-2. **Backend (`apps/api`):** Node.js, Express.js, TypeScript, Prisma ORM, PostgreSQL 16, Redis 7 (thông qua `ioredis`), Zod (validation), bcrypt (hashing mật khẩu).
-3. **Frontend (`apps/web`):** React 18/19, Vite, TypeScript, SCSS (Sass thuần), không sử dụng TailwindCSS hay thư viện UI bên ngoài nếu chưa được chấp thuận.
+2. **Backend (`apps/backend`):** Node.js, Express.js, TypeScript, Prisma ORM, PostgreSQL 16, Redis 7 (thông qua `ioredis`), Zod (validation), bcrypt (hashing mật khẩu).
+3. **Frontend (`apps/fontend`):** React 18/19, Vite, TypeScript, SCSS (Sass thuần), không sử dụng TailwindCSS hay thư viện UI bên ngoài nếu chưa được chấp thuận.
 4. **Shared Package (`packages/shared`):** Chứa Type, DTO, interface, constant, schema dùng chung giữa Backend và Frontend (không chứa logic phụ thuộc React hoặc Express).
 5. **Media Storage:** Cloudinary (quản lý ảnh sản phẩm qua SDK).
 6. **Cache & Queue:** Redis 7 (Phase 1 dùng cho Caching, chuẩn bị nền tảng cho BullMQ ở các Phase sau).
@@ -27,7 +27,7 @@
 
 1. **PostgreSQL là nguồn sự thật duy nhất** về số lượng tồn kho và các trạng thái nghiệp vụ. Không coi Redis là nguồn dữ liệu gốc.
 2. **Prisma Schema và Migrations:**
-   - Quản lý schema duy nhất tại `apps/api/prisma/schema.prisma`.
+   - Quản lý schema duy nhất tại `apps/backend/prisma/schema.prisma`.
    - Mọi thay đổi cấu trúc bảng bắt buộc phải tạo Prisma Migration và lưu vào Git.
    - Tuyệt đối không dùng `prisma db push` trên môi trường production/staging và không quản lý migration song song bằng công cụ khác.
 3. **Tính nhất quán công nghệ:**
@@ -41,12 +41,12 @@
 
 ## C. STRICT FILE PLACEMENT
 
-### 1. Backend (`apps/api`)
-Tất cả mã nguồn Backend bắt buộc nằm trong `apps/api/src/` và các thư mục hạ tầng được quy định rõ ràng. Không đặt controller, service, repository, route, DTO hoặc helper nghiệp vụ rải rác ở thư mục gốc.
+### 1. Backend (`apps/backend`)
+Tất cả mã nguồn Backend bắt buộc nằm trong `apps/backend/src/` và các thư mục hạ tầng được quy định rõ ràng. Không đặt controller, service, repository, route, DTO hoặc helper nghiệp vụ rải rác ở thư mục gốc.
 
 Cấu trúc chuẩn của một module nghiệp vụ hoàn chỉnh:
 ```text
-apps/api/src/modules/<module_name>/
+apps/backend/src/modules/<module_name>/
 ├── <module_name>.routes.ts      # Khai báo endpoint, middleware (auth, validate), phân quyền
 ├── <module_name>.controller.ts  # Nhận Express request, đọc DTO đã xác thực, gọi service, trả HTTP response
 ├── <module_name>.service.ts     # Xử lý business logic, quản lý transaction, điều phối cache
@@ -61,36 +61,36 @@ apps/api/src/modules/<module_name>/
 - **Repository:** Chịu trách nhiệm trực tiếp giao tiếp với Database qua Prisma Client. Không xử lý request/response của Express, không xử lý status code.
 - **Schema:** Khai báo Zod schemas để validate `body`, `query`, `params` của request.
 
-**Cấu hình hạ tầng (`apps/api/src/config/`):**
+**Cấu hình hạ tầng (`apps/backend/src/config/`):**
 - Chỉ đặt cấu hình môi trường (`env.ts`), Database (`db.ts`), Redis (`redis.ts`), Cloudinary (`cloudinary.ts`).
 
-**Thành phần dùng chung (`apps/api/src/common/`):**
+**Thành phần dùng chung (`apps/backend/src/common/`):**
 - `middleware/`: Middleware xử lý lỗi (`errorHandler.ts`), middleware xác thực, rate limit, request logger.
 - `errors/`: Các lớp lỗi nghiệp vụ chuẩn hóa (`AppError`, `NotFoundError`, `BadRequestError`, `UnauthorizedError`, `ConflictError`).
 - `utils/`: Hàm tiện ích thuần túy (crypto, date helper, formatting).
 - `types/`: Type definition mở rộng cho Express Request (như gán `req.user`).
 
 **Entry Points:**
-- `apps/api/src/app.ts`: Khởi tạo Express app, cấu hình CORS, helmet, express.json, các routes chính và middleware xử lý lỗi tập trung.
-- `apps/api/src/server.ts`: Lắng nghe port HTTP, kết nối Database/Redis, xử lý Graceful Shutdown (`SIGTERM`, `SIGINT`).
+- `apps/backend/src/app.ts`: Khởi tạo Express app, cấu hình CORS, helmet, express.json, các routes chính và middleware xử lý lỗi tập trung.
+- `apps/backend/src/server.ts`: Lắng nghe port HTTP, kết nối Database/Redis, xử lý Graceful Shutdown (`SIGTERM`, `SIGINT`).
 
 > **Lưu ý:** Không tạo các file rỗng chỉ để đủ số lượng. Các module chưa làm trong Phase 1 không tạo file placeholder rỗng trừ khi Phase yêu cầu.
 
-### 2. Frontend (`apps/web`)
+### 2. Frontend (`apps/fontend`)
 - **Pages:** Mỗi trang phải nằm trong một thư mục riêng:
   ```text
-  apps/web/src/pages/<page-name>/<PageName>.tsx
-  apps/web/src/pages/<page-name>/<PageName>.scss
+  apps/fontend/src/pages/<page-name>/<PageName>.tsx
+  apps/fontend/src/pages/<page-name>/<PageName>.scss
   ```
 - **Shared Components:** Mỗi component dùng chung phải có thư mục riêng:
   ```text
-  apps/web/src/components/<category>/<ComponentName>/<ComponentName>.tsx
-  apps/web/src/components/<category>/<ComponentName>/<ComponentName>.scss
+  apps/fontend/src/components/<category>/<ComponentName>/<ComponentName>.tsx
+  apps/fontend/src/components/<category>/<ComponentName>/<ComponentName>.scss
   ```
 - **Không gom nhiều Page hoặc Component lớn vào chung một file.**
-- **Không đặt component nghiệp vụ đặc thù vào thư mục common** nếu nó chỉ phục vụ một feature duy nhất (hãy đặt tại `apps/web/src/features/<feature>/components/`).
-- **HTTP Client trung tâm:** Bắt buộc đặt tại `apps/web/src/lib/api.ts` để cấu hình base URL, credentials, token refresh interceptor.
-- **API theo feature:** Đặt tại `apps/web/src/features/<feature>/api.ts` và tái sử dụng HTTP client trung tâm tại `apps/web/src/lib/api.ts`.
+- **Không đặt component nghiệp vụ đặc thù vào thư mục common** nếu nó chỉ phục vụ một feature duy nhất (hãy đặt tại `apps/fontend/src/features/<feature>/components/`).
+- **HTTP Client trung tâm:** Bắt buộc đặt tại `apps/fontend/src/lib/api.ts` để cấu hình base URL, credentials, token refresh interceptor.
+- **API theo feature:** Đặt tại `apps/fontend/src/features/<feature>/api.ts` và tái sử dụng HTTP client trung tâm tại `apps/fontend/src/lib/api.ts`.
 
 ---
 
@@ -100,9 +100,9 @@ apps/api/src/modules/<module_name>/
    - Sử dụng Sass thuần (`sass` package).
    - Mỗi Component/Page có file SCSS riêng biệt đặt cạnh file component.
    - File định nghĩa nguồn:
-     - `apps/web/src/styles/_variables.scss`: Chứa design tokens (màu sắc, spacing, typography scale, border-radius, shadows, z-index).
-     - `apps/web/src/styles/_mixins.scss`: Chứa breakpoint mixins, flex/grid helpers, text ellipsis, interactive states.
-     - `apps/web/src/styles/main.scss`: CSS reset, font imports, box-sizing, global body styling và import styles hệ thống.
+     - `apps/fontend/src/styles/_variables.scss`: Chứa design tokens (màu sắc, spacing, typography scale, border-radius, shadows, z-index).
+     - `apps/fontend/src/styles/_mixins.scss`: Chứa breakpoint mixins, flex/grid helpers, text ellipsis, interactive states.
+     - `apps/fontend/src/styles/main.scss`: CSS reset, font imports, box-sizing, global body styling và import styles hệ thống.
 2. **Quy tắc sử dụng:**
    - Sử dụng cú pháp Sass hiện đại: `@use '../../styles/variables' as v;` và `@use '../../styles/mixins' as m;`.
    - Tuyệt đối không import vòng lặp giữa `_variables.scss` và `_mixins.scss`.
@@ -165,7 +165,7 @@ Các quy tắc sau đây là **BẤT BIẾN BẮT BUỘC**, không được phé
 2. **Quản lý Secrets & Biến môi trường:**
    - Không commit file `.env` thật lên Git repository.
    - Không hardcode JWT Secret, Database Password, Redis Password, Cloudinary API Key/Secret trong source code.
-   - Mọi biến môi trường phải được validate qua schema tập trung tại `apps/api/src/config/env.ts`.
+   - Mọi biến môi trường phải được validate qua schema tập trung tại `apps/backend/src/config/env.ts`.
 3. **Phòng chống tấn công:**
    - **SQL Injection:** Dùng Prisma ORM cho hầu hết truy vấn. Nếu dùng raw SQL, bắt buộc dùng template literals của Prisma (`prisma.$queryRaw\`...\``) với tham số tự động escape. Tuyệt đối không nối chuỗi thô (`+ userInput`) vào SQL.
    - **XSS & Injection:** Validate toàn bộ payload đầu vào ở API bằng Zod schemas.

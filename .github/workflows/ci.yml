@@ -42,12 +42,12 @@ jobs:
       REDIS_URL: "redis://localhost:6379"
       JWT_ACCESS_SECRET: "ci_pipeline_jwt_access_secret_minimum_32_characters"
       JWT_REFRESH_SECRET: "ci_pipeline_jwt_refresh_secret_minimum_32_characters"
-      SEED_ADMIN_EMAIL: "admin@cloudstock.dev"
-      SEED_ADMIN_PASSWORD: "AdminPassword123!"
-      SEED_MANAGER_EMAIL: "manager@cloudstock.dev"
-      SEED_MANAGER_PASSWORD: "ManagerPassword123!"
-      SEED_STAFF_EMAIL: "staff@cloudstock.dev"
-      SEED_STAFF_PASSWORD: "StaffPassword123!"
+      SEED_ADMIN_EMAIL: "admin@gmail.com"
+      SEED_ADMIN_PASSWORD: "admin1234@"
+      SEED_MANAGER_EMAIL: "manager@gmail.com"
+      SEED_MANAGER_PASSWORD: "manager1234@"
+      SEED_STAFF_EMAIL: "minhhung@gmail.com"
+      SEED_STAFF_PASSWORD: "minhhung1234@"
 
     steps:
       - name: Checkout Code
@@ -63,13 +63,13 @@ jobs:
         run: npm ci
 
       - name: Validate Prisma Schema
-        run: npx prisma validate --schema=apps/api/prisma/schema.prisma
+        run: npx prisma validate --schema=apps/backend/prisma/schema.prisma
 
       - name: Generate Prisma Client
         run: npm run db:generate
 
       - name: Run Prisma Migrations
-        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+        run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
 
       - name: Run Seed Data
         run: npm run db:seed

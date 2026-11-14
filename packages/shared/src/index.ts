@@ -115,6 +115,8 @@ export interface UserProfile {
   email: string;
   role: Role;
   isActive: boolean;
+  avatarUrl?: string | null;
+  avatarPublicId?: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
