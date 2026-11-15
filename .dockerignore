@@ -7,6 +7,15 @@ dist
 build
 coverage
 *.log
+npm-debug.log*
+*.tsbuildinfo
 .DS_Store
+Thumbs.db
+Desktop.ini
+.vscode
+.idea
+tmp
+temp
+uploads
 tests
 docs

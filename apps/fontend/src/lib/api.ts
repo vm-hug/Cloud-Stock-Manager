@@ -69,6 +69,10 @@ export function localizeBackendErrorMessage(rawMessage: string): string {
   return rawMessage;
 }
 
+/**
+ * Centralized HTTP client wrapping `fetch` with in-memory JWT attachment,
+ * HttpOnly cookie credentials, and concurrent 401 refresh-token rotation.
+ */
 class ApiClient {
   private baseUrl: string;
 
@@ -76,6 +80,11 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  /**
+   * Returns the configured API base URL.
+   *
+   * @returns Base URL string (e.g., `http://localhost:5001/api`)
+   */
   public getBaseUrl(): string {
     return this.baseUrl;
   }
@@ -84,6 +93,11 @@ class ApiClient {
     return this.baseUrl.replace(/\/api\/?$/, '');
   }
 
+  /**
+   * Returns the current in-memory JWT access token, if any.
+   *
+   * @returns Access token string or `null`
+   */
   public getAccessToken(): string | null {
     if (inMemoryAccessToken) return inMemoryAccessToken;
     try {
@@ -98,6 +112,12 @@ class ApiClient {
     return null;
   }
 
+  /**
+   * Updates the in-memory JWT access token used for `Authorization` headers
+   * and syncs it with `sessionStorage` for the current browser tab.
+   *
+   * @param token - New access token or `null` to clear authentication state
+   */
   public setAccessToken(token: string | null): void {
     inMemoryAccessToken = token;
     try {
@@ -111,6 +131,11 @@ class ApiClient {
     }
   }
 
+  /**
+   * Returns the current tab-scoped refresh token from memory or `sessionStorage`.
+   *
+   * @returns Refresh token string or `null`
+   */
   public getRefreshToken(): string | null {
     if (inMemoryRefreshToken) return inMemoryRefreshToken;
     try {
@@ -125,6 +150,11 @@ class ApiClient {
     return null;
   }
 
+  /**
+   * Updates the tab-scoped refresh token in memory and `sessionStorage`.
+   *
+   * @param token - New refresh token or `null` to clear
+   */
   public setRefreshToken(token: string | null): void {
     inMemoryRefreshToken = token;
     try {
@@ -138,11 +168,16 @@ class ApiClient {
     }
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    retryCount = 0
-  ): Promise<ApiResponse<T>> {
+  /**
+   * Executes an HTTP request with automatic `401 Unauthorized` token refresh retry.
+   *
+   * @typeParam T - Expected `data` payload type in `ApiResponse<T>`
+   * @param endpoint - Relative API endpoint path
+   * @param options - Standard `fetch` request options
+   * @param retryCount - Internal retry counter to prevent infinite refresh loops
+   * @returns Normalized `ApiResponse<T>` envelope
+   */
+  private async request<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const headers = new Headers(options.headers || {});
 

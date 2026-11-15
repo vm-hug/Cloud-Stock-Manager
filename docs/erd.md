@@ -209,3 +209,11 @@ erDiagram
 | `audit_logs` | `id` (UUID) | Indexes on `(entity_type, entity_id)`, `actor_id`, `created_at` |
 | `import_jobs` | `id` (UUID) | Indexes on `created_by`, `status`, `created_at` |
 
+---
+
+## 3. Referential Integrity & Ledger Policies
+
+- **No Destructive Cascades:** Foreign keys referencing warehouses, variants, stock documents, and movements avoid `ON DELETE CASCADE` to prevent accidental loss of auditable inventory history.
+- **Immutable Ledger:** Records in `stock_movements` and `audit_logs` are append-only and must never be updated or deleted.
+- **Soft Deletion:** Catalog entities (`products`, `product_variants`) use `is_active = false` and `deleted_at` timestamps instead of hard deletion once referenced by inventory records.
+

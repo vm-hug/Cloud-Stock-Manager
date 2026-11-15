@@ -1,10 +1,25 @@
+/**
+ * @file Phase 2 Integration Test Suite
+ * @description End-to-end verification of health probes, JWT authentication,
+ * refresh token rotation & reuse attack detection, RBAC enforcement,
+ * user management invariants (last-admin protection, immediate session revocation),
+ * and audit log compliance.
+ */
 import assert from 'assert';
 import http from 'http';
 import { app } from '../src/app';
 import { prisma } from '../src/config/db';
 import { Role } from '@cloud-stock/shared';
 
-// Helper to make HTTP requests against express app instance
+/**
+ * Sends an HTTP request against the ephemeral test Express server.
+ *
+ * @param server - Running Node HTTP server wrapping the Express app
+ * @param method - HTTP method (GET, POST, PATCH, DELETE, etc.)
+ * @param path - Target endpoint path including query string
+ * @param options - Optional request headers, JSON body, and Cookie header
+ * @returns Parsed status code, response headers, JSON/text body, and Set-Cookie headers
+ */
 function request(
   server: http.Server,
   method: string,
@@ -73,6 +88,13 @@ function request(
   });
 }
 
+/**
+ * Extracts a specific cookie value from an array of `Set-Cookie` response headers.
+ *
+ * @param cookies - Array of raw `Set-Cookie` header strings
+ * @param name - Cookie key to look up
+ * @returns The cookie value if present, otherwise `undefined`
+ */
 function extractCookie(cookies: string[], name: string): string | undefined {
   for (const c of cookies) {
     const parts = c.split(';')[0].split('=');
@@ -83,6 +105,10 @@ function extractCookie(cookies: string[], name: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Executes the Phase 2 integration test suite sequentially against an ephemeral HTTP server
+ * and ensures clean teardown of the server, Prisma client, and Redis connection.
+ */
 async function runTests() {
   console.log('🚀 Starting Phase 2 Comprehensive Test Suite...');
 

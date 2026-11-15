@@ -46,7 +46,7 @@ This document provides complete instructions for deploying Cloud Stock Managemen
 3. **Create Web Service for the API:**
    - Repository: `https://github.com/vm-hug/Cloud-Stock-Manager`
    - Branch: `main` (or release branch)
-   - Runtime: `Docker` (using the root [Dockerfile](file:///Users/mac/Desktop/cloud-stock-management/Dockerfile))
+   - Runtime: `Docker` (using the root [Dockerfile](../Dockerfile))
    - Health Check Path: `/api/health/live`
    - Auto-Deploy: `Yes` (Triggered upon passing GitHub Actions CI)
 
@@ -71,6 +71,9 @@ Set the following variables in **Render Dashboard &rarr; Environment**:
 | `SEED_MANAGER_PASSWORD`| Initial Manager Password | Strong password |
 | `SEED_STAFF_EMAIL` | Initial Staff Email | `staff@cloudstock.dev` |
 | `SEED_STAFF_PASSWORD` | Initial Staff Password | Strong password |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name *(optional)* | Required only if product image uploads are enabled |
+| `CLOUDINARY_API_KEY` | Cloudinary API key *(optional)* | Required only if product image uploads are enabled |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret *(optional)* | Required only if product image uploads are enabled |
 
 ---
 
