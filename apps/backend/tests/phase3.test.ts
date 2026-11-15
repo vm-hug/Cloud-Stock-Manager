@@ -1,3 +1,9 @@
+/**
+ * @file Phase 3 Integration Test Suite
+ * @description End-to-end verification of catalog management (categories, products,
+ * SKU variants), Cloudinary signed upload & Single Primary Image invariants,
+ * positive-stock deletion protection, soft-delete/restore behavior, and audit logs.
+ */
 process.env.NODE_ENV = 'test';
 import assert from 'assert';
 import http from 'http';
@@ -5,6 +11,15 @@ import { app } from '../src/app';
 import { prisma } from '../src/config/db';
 import { Role } from '@cloud-stock/shared';
 
+/**
+ * Sends an HTTP request against the ephemeral test Express server.
+ *
+ * @param server - Running Node HTTP server wrapping the Express app
+ * @param method - HTTP method (GET, POST, PATCH, DELETE, etc.)
+ * @param path - Target endpoint path including query string
+ * @param options - Optional request headers, JSON body, and Cookie header
+ * @returns Parsed status code, response headers, and JSON/text body
+ */
 function request(
   server: http.Server,
   method: string,
@@ -71,6 +86,10 @@ function request(
   });
 }
 
+/**
+ * Executes the Phase 3 catalog & media integration test suite sequentially
+ * and tears down the HTTP server, Prisma client, and Redis connection in `finally`.
+ */
 async function runPhase3Tests() {
   console.log('🚀 Starting Phase 3 Comprehensive Test Suite (Catalog, Variants, Cloudinary, RBAC)...');
 
