@@ -2,6 +2,7 @@ import { app } from './app';
 import { env } from './config/env';
 import { prisma } from './config/db';
 import { redis } from './config/redis';
+import { socketHub } from './common/utils/socket';
 
 async function bootstrap() {
   try {
@@ -16,11 +17,13 @@ async function bootstrap() {
       console.warn('⚠️ Could not connect to Redis at startup. Will retry automatically.');
     }
 
-    // 3. Start HTTP Server
+    // 3. Start HTTP Server & Attach Socket.io Real-time Hub
     const server = app.listen(env.PORT, () => {
       console.log(`🚀 Cloud Stock API server running on port ${env.PORT} in [${env.NODE_ENV}] mode.`);
       console.log(`📡 Healthcheck available at: http://localhost:${env.PORT}/api/health`);
+      console.log(`⚡ Socket.io Real-time Hub initialized at /socket.io`);
     });
+    socketHub.init(server);
 
     // 4. Handle Graceful Shutdown
     const shutdown = async (signal: string) => {

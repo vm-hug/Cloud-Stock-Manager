@@ -3,24 +3,25 @@ import { StockDocument, StockDocStatus, StockDocType, Role } from '@cloud-stock/
 import { inventoryApi } from '../../features/inventory/inventory.api';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useI18n } from '../../features/i18n/I18nContext';
+import { useNotifications } from '../../features/notifications/NotificationContext';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Send, Ban } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Send, Ban, AlertCircle } from 'lucide-react';
 import './StockDocumentDetailPage.scss';
 
 export const StockDocumentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const { showToast } = useNotifications();
   const [doc, setDoc] = useState<StockDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDocument = async () => {
+  const loadDocument = async (silent = false) => {
     if (!id) return;
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
       const res = await inventoryApi.getDocumentById(id);
       if (res.success && res.data) {
         setDoc(res.data);
@@ -28,12 +29,22 @@ export const StockDocumentDetailPage: React.FC = () => {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.notFound'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadDocument();
+    const onDocChanged = (e: Event) => {
+      const custom = e as CustomEvent<{ id?: string }>;
+      if (!custom.detail?.id || custom.detail.id === id) {
+        loadDocument(true);
+      }
+    };
+    window.addEventListener('cloudstock:stock-document-changed', onDocChanged);
+    return () => {
+      window.removeEventListener('cloudstock:stock-document-changed', onDocChanged);
+    };
   }, [id]);
 
   if (loading) {
@@ -93,8 +104,23 @@ export const StockDocumentDetailPage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.submitDocument(doc.id);
-      loadDocument();
+      const res = await inventoryApi.submitDocument(doc.id);
+      if (!res.success) {
+        setError(
+          res.error?.message ||
+            (lang === 'vi' ? 'Không thể gửi phê duyệt phiếu kho.' : 'Failed to submit voucher.')
+        );
+        return;
+      }
+      showToast({
+        type: 'info',
+        title: lang === 'vi' ? 'Đã gửi yêu cầu phê duyệt' : 'Submitted for Approval',
+        message:
+          lang === 'vi'
+            ? `Phiếu ${doc.documentCode} đã được gửi tới Quản lý kho / Admin để phê duyệt.`
+            : `Voucher ${doc.documentCode} has been sent to Manager / Admin for approval.`,
+      });
+      loadDocument(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.notFound'));
     } finally {
@@ -110,8 +136,32 @@ export const StockDocumentDetailPage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.approveDocument(doc.id);
-      loadDocument();
+      const res = await inventoryApi.approveDocument(doc.id);
+      if (!res.success) {
+        const rawMsg = res.error?.message || '';
+        const stockMatch = rawMsg.match(
+          /Insufficient stock for SKU \[([^\]]+)\] at warehouse \[([^\]]+)\]\.\s*Available:\s*(\d+),\s*Requested:\s*(\d+)/i
+        );
+        const displayMsg = stockMatch
+          ? lang === 'vi'
+            ? `Chống xuất âm: Không đủ tồn kho cho mã SKU [${stockMatch[1]}] tại kho [${stockMatch[2]}]. Tồn khả dụng: ${stockMatch[3]}, Yêu cầu xuất: ${stockMatch[4]}.`
+            : rawMsg
+          : rawMsg ||
+            (lang === 'vi'
+              ? 'Không thể phê duyệt phiếu kho.'
+              : 'Failed to approve stock voucher.');
+        setError(displayMsg);
+        return;
+      }
+      showToast({
+        type: 'success',
+        title: lang === 'vi' ? 'Đã phê duyệt & chốt tồn kho' : 'Voucher Approved & Posted',
+        message:
+          lang === 'vi'
+            ? `Phiếu ${doc.documentCode} đã chuyển sang ĐÃ GHI SỔ (POSTED) và cập nhật tồn kho thực tế.`
+            : `Voucher ${doc.documentCode} has been POSTED and inventory balances updated.`,
+      });
+      loadDocument(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.notFound'));
     } finally {
@@ -126,8 +176,23 @@ export const StockDocumentDetailPage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.rejectDocument(doc.id, reason);
-      loadDocument();
+      const res = await inventoryApi.rejectDocument(doc.id, reason);
+      if (!res.success) {
+        setError(
+          res.error?.message ||
+            (lang === 'vi' ? 'Không thể từ chối phiếu kho.' : 'Failed to reject voucher.')
+        );
+        return;
+      }
+      showToast({
+        type: 'warning',
+        title: lang === 'vi' ? 'Đã từ chối chứng từ' : 'Voucher Rejected',
+        message:
+          lang === 'vi'
+            ? `Phiếu ${doc.documentCode} đã chuyển sang trạng thái TỪ CHỐI (REJECTED).`
+            : `Voucher ${doc.documentCode} was marked as REJECTED.`,
+      });
+      loadDocument(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.notFound'));
     } finally {
@@ -141,8 +206,23 @@ export const StockDocumentDetailPage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.cancelDocument(doc.id);
-      loadDocument();
+      const res = await inventoryApi.cancelDocument(doc.id);
+      if (!res.success) {
+        setError(
+          res.error?.message ||
+            (lang === 'vi' ? 'Không thể hủy phiếu kho.' : 'Failed to cancel voucher.')
+        );
+        return;
+      }
+      showToast({
+        type: 'warning',
+        title: lang === 'vi' ? 'Đã hủy chứng từ' : 'Voucher Cancelled',
+        message:
+          lang === 'vi'
+            ? `Phiếu ${doc.documentCode} đã được hủy.`
+            : `Voucher ${doc.documentCode} has been cancelled.`,
+      });
+      loadDocument(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.notFound'));
     } finally {
@@ -214,7 +294,21 @@ export const StockDocumentDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div
+          className="error-banner"
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontWeight: 600,
+          }}
+        >
+          <AlertCircle size={17} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="meta-grid">
         <div className="meta-card">

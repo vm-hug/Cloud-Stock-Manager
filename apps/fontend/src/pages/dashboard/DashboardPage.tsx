@@ -57,7 +57,7 @@ export const DashboardPage: React.FC = () => {
   const [inboundModalOpen, setInboundModalOpen] = useState<boolean>(false);
   const [inboundWhId, setInboundWhId] = useState<string>('');
   const [inboundVariantId, setInboundVariantId] = useState<string>('');
-  const [inboundQty, setInboundQty] = useState<number>(100);
+  const [inboundQty, setInboundQty] = useState<number | ''>(100);
   const [inboundPoCode, setInboundPoCode] = useState<string>('');
   const [submittingInbound, setSubmittingInbound] = useState<boolean>(false);
   const [inboundError, setInboundError] = useState<string | null>(null);
@@ -121,6 +121,15 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchOverviewData();
+    const onRealtimeUpdate = () => {
+      fetchOverviewData();
+    };
+    window.addEventListener('cloudstock:inventory-changed', onRealtimeUpdate);
+    window.addEventListener('cloudstock:stock-document-changed', onRealtimeUpdate);
+    return () => {
+      window.removeEventListener('cloudstock:inventory-changed', onRealtimeUpdate);
+      window.removeEventListener('cloudstock:stock-document-changed', onRealtimeUpdate);
+    };
   }, [selectedWh]);
 
   // Build unified display rows so even when 0 warehouses exist yet, newly created SKUs appear immediately
@@ -322,7 +331,8 @@ export const DashboardPage: React.FC = () => {
 
   const handleConfirmQuickInbound = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inboundVariantId || inboundQty < 1) {
+    const numericQty = Number(inboundQty);
+    if (!inboundVariantId || !Number.isFinite(numericQty) || numericQty < 1) {
       setInboundError(
         lang === 'vi'
           ? 'Vui lòng chọn mã SKU và nhập số lượng hợp lệ (>= 1).'
@@ -981,7 +991,20 @@ export const DashboardPage: React.FC = () => {
                     min={1}
                     required
                     value={inboundQty}
-                    onChange={(e) => setInboundQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        setInboundQty('');
+                        return;
+                      }
+                      const parsed = parseInt(raw, 10);
+                      setInboundQty(Number.isNaN(parsed) ? '' : parsed);
+                    }}
+                    onBlur={() => {
+                      if (inboundQty === '' || Number(inboundQty) < 1) {
+                        setInboundQty(1);
+                      }
+                    }}
                   />
                 </div>
                 <div className="modal-field">

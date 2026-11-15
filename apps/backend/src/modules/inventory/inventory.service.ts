@@ -17,6 +17,7 @@ import {
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../common/errors/appError';
 import { auditService } from '../audit/audit.service';
 import { prisma } from '../../config/db';
+import { socketHub, RealtimeNotificationPayload, StockDocumentChangedPayload } from '../../common/utils/socket';
 
 /**
  * Core business logic for warehouse management, real-time inventory balances,
@@ -338,6 +339,34 @@ export class InventoryService {
       ipAddress,
     });
 
+    const creatorName = doc.createdBy?.name || 'Nhân viên kho';
+    const notif: RealtimeNotificationPayload = {
+      id: `submit-${id}-${Date.now()}`,
+      type: 'PENDING_APPROVAL',
+      titleVi: `Phiếu kho ${doc.documentCode} chờ phê duyệt`,
+      titleEn: `Voucher ${doc.documentCode} awaiting approval`,
+      messageVi: `${creatorName} vừa gửi yêu cầu phê duyệt phiếu ${doc.documentCode} (${doc.type}).`,
+      messageEn: `${creatorName} submitted voucher ${doc.documentCode} (${doc.type}) for approval.`,
+      documentId: id,
+      documentCode: doc.documentCode,
+      link: `/stock-documents/${id}`,
+      actorName: creatorName,
+      createdAt: new Date().toISOString(),
+    };
+    socketHub.emitToRoles([Role.ADMIN, Role.MANAGER], 'notification:new', notif);
+
+    const changedEvent: StockDocumentChangedPayload = {
+      action: 'SUBMITTED',
+      documentId: id,
+      documentCode: doc.documentCode,
+      status: StockDocStatus.PENDING,
+      docType: doc.type,
+      createdById: doc.createdById,
+      actorName: creatorName,
+      timestamp: new Date().toISOString(),
+    };
+    socketHub.emitToWorkspace('stock-document:changed', changedEvent);
+
     return updated;
   }
 
@@ -350,11 +379,89 @@ export class InventoryService {
     let retries = 3;
     while (retries > 0) {
       try {
-        return await this.repo.approveAndPostDocument({
+        const postedDoc = await this.repo.approveAndPostDocument({
           documentId: id,
           approverId,
           ipAddress,
         });
+
+        if (postedDoc) {
+          const approverName = postedDoc.approvedBy?.name || 'Quản lý kho';
+          const approvedNotif: RealtimeNotificationPayload = {
+            id: `approve-${id}-${Date.now()}`,
+            type: 'DOCUMENT_APPROVED',
+            titleVi: `Phiếu ${postedDoc.documentCode} đã được phê duyệt`,
+            titleEn: `Voucher ${postedDoc.documentCode} approved & posted`,
+            messageVi: `${approverName} đã phê duyệt và ghi sổ phiếu ${postedDoc.documentCode} (POSTED).`,
+            messageEn: `${approverName} approved and posted voucher ${postedDoc.documentCode}.`,
+            documentId: id,
+            documentCode: postedDoc.documentCode,
+            link: `/stock-documents/${id}`,
+            actorName: approverName,
+            createdAt: new Date().toISOString(),
+          };
+
+          if (postedDoc.createdById) {
+            socketHub.emitToUser(postedDoc.createdById, 'notification:new', approvedNotif);
+          }
+          socketHub.emitToRoles([Role.ADMIN, Role.MANAGER], 'notification:new', approvedNotif);
+
+          const changedEvent: StockDocumentChangedPayload = {
+            action: 'APPROVED',
+            documentId: id,
+            documentCode: postedDoc.documentCode,
+            status: StockDocStatus.POSTED,
+            docType: postedDoc.type,
+            createdById: postedDoc.createdById,
+            actorName: approverName,
+            timestamp: new Date().toISOString(),
+          };
+          socketHub.emitToWorkspace('stock-document:changed', changedEvent);
+          socketHub.emitToWorkspace('inventory:changed', {
+            documentId: id,
+            documentCode: postedDoc.documentCode,
+            timestamp: new Date().toISOString(),
+          });
+
+          // Check if any affected balance in sourceWarehouse dropped to <= minThreshold
+          if (postedDoc.sourceWarehouseId && postedDoc.items && postedDoc.items.length > 0) {
+            const variantIds = postedDoc.items.map((item) => item.variantId);
+            const lowBalances = await prisma.inventoryBalance.findMany({
+              where: {
+                warehouseId: postedDoc.sourceWarehouseId,
+                variantId: { in: variantIds },
+              },
+              include: {
+                warehouse: true,
+                variant: true,
+              },
+            });
+
+            for (const bal of lowBalances) {
+              if (bal.quantity <= bal.minThreshold) {
+                const lowStockNotif: RealtimeNotificationPayload = {
+                  id: `lowstock-${bal.warehouseId}-${bal.variantId}-${Date.now()}`,
+                  type: 'LOW_STOCK_ALERT',
+                  titleVi:
+                    bal.quantity === 0
+                      ? `Cảnh báo hết hàng: ${bal.variant.sku}`
+                      : `Cảnh báo sắp hết hàng: ${bal.variant.sku}`,
+                  titleEn:
+                    bal.quantity === 0
+                      ? `Out of stock alert: ${bal.variant.sku}`
+                      : `Low stock alert: ${bal.variant.sku}`,
+                  messageVi: `Mã SKU ${bal.variant.sku} tại kho ${bal.warehouse.code} còn ${bal.quantity} (định mức tối thiểu: ${bal.minThreshold}).`,
+                  messageEn: `SKU ${bal.variant.sku} at ${bal.warehouse.code} has ${bal.quantity} units remaining (threshold: ${bal.minThreshold}).`,
+                  link: '/inventory/low-stock',
+                  createdAt: new Date().toISOString(),
+                };
+                socketHub.emitToRoles([Role.ADMIN, Role.MANAGER], 'notification:new', lowStockNotif);
+              }
+            }
+          }
+        }
+
+        return postedDoc;
       } catch (err: any) {
         // Retry only on PostgreSQL serialization failure (40001) or deadlock (40P01)
         if ((err.code === '40001' || err.code === '40P01') && retries > 1) {
@@ -394,6 +501,35 @@ export class InventoryService {
       ipAddress,
     });
 
+    const rejectNotif: RealtimeNotificationPayload = {
+      id: `reject-${id}-${Date.now()}`,
+      type: 'DOCUMENT_REJECTED',
+      titleVi: `Phiếu ${doc.documentCode} đã bị từ chối`,
+      titleEn: `Voucher ${doc.documentCode} rejected`,
+      messageVi: `Phiếu kho ${doc.documentCode} đã bị từ chối${reason ? `: "${reason}"` : '.'}`,
+      messageEn: `Voucher ${doc.documentCode} was rejected${reason ? `: "${reason}"` : '.'}`,
+      documentId: id,
+      documentCode: doc.documentCode,
+      link: `/stock-documents/${id}`,
+      createdAt: new Date().toISOString(),
+    };
+    if (doc.createdById) {
+      socketHub.emitToUser(doc.createdById, 'notification:new', rejectNotif);
+    }
+    socketHub.emitToRoles([Role.ADMIN, Role.MANAGER], 'notification:new', rejectNotif);
+
+    const changedEvent: StockDocumentChangedPayload = {
+      action: 'REJECTED',
+      documentId: id,
+      documentCode: doc.documentCode,
+      status: StockDocStatus.REJECTED,
+      docType: doc.type,
+      createdById: doc.createdById,
+      reason,
+      timestamp: new Date().toISOString(),
+    };
+    socketHub.emitToWorkspace('stock-document:changed', changedEvent);
+
     return updated;
   }
 
@@ -425,6 +561,17 @@ export class InventoryService {
       metadata: { documentCode: doc.documentCode, previousStatus: doc.status },
       ipAddress,
     });
+
+    const changedEvent: StockDocumentChangedPayload = {
+      action: 'CANCELLED',
+      documentId: id,
+      documentCode: doc.documentCode,
+      status: StockDocStatus.CANCELLED,
+      docType: doc.type,
+      createdById: doc.createdById,
+      timestamp: new Date().toISOString(),
+    };
+    socketHub.emitToWorkspace('stock-document:changed', changedEvent);
 
     return updated;
   }

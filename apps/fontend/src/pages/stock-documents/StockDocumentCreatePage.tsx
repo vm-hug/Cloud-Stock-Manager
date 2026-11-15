@@ -3,21 +3,23 @@ import { StockDocType, Warehouse, ProductVariant } from '@cloud-stock/shared';
 import { inventoryApi } from '../../features/inventory/inventory.api';
 import { catalogApi } from '../../features/catalog/catalog.api';
 import { useI18n } from '../../features/i18n/I18nContext';
+import { useNotifications } from '../../features/notifications/NotificationContext';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, AlertCircle } from 'lucide-react';
 import './StockDocumentCreatePage.scss';
 
 interface DocumentItemRow {
   variantId: string;
-  quantity: number;
-  adjustmentDelta?: number;
-  unitPrice?: number;
+  quantity: number | '';
+  adjustmentDelta?: number | '' | '-';
+  unitPrice?: number | '';
 }
 
 export const StockDocumentCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const { showToast } = useNotifications();
 
   const rawType = searchParams.get('type') as StockDocType | null;
   const initialType =
@@ -121,17 +123,19 @@ export const StockDocumentCreatePage: React.FC = () => {
     }
 
     for (let i = 0; i < items.length; i++) {
+      const parsedQty = Number(items[i].quantity);
       if (!items[i].variantId) {
         setError(t('stockDocs.errItemSkuRequired', { row: i + 1 }));
         return;
       }
-      if (items[i].quantity <= 0) {
+      if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
         setError(t('stockDocs.errItemQtyMin', { row: i + 1 }));
         return;
       }
+      const parsedDelta = Number(items[i].adjustmentDelta);
       if (
         type === StockDocType.ADJUSTMENT &&
-        (!items[i].adjustmentDelta || items[i].adjustmentDelta === 0)
+        (!Number.isFinite(parsedDelta) || parsedDelta === 0)
       ) {
         setError(t('stockDocs.errItemDeltaZero', { row: i + 1 }));
         return;
@@ -147,14 +151,26 @@ export const StockDocumentCreatePage: React.FC = () => {
         note: note || null,
         items: items.map((i) => ({
           variantId: i.variantId,
-          quantity: i.quantity,
-          adjustmentDelta: type === StockDocType.ADJUSTMENT ? i.adjustmentDelta : undefined,
-          unitPrice: i.unitPrice,
+          quantity: Math.max(1, Number(i.quantity) || 1),
+          adjustmentDelta:
+            type === StockDocType.ADJUSTMENT ? Number(i.adjustmentDelta) : undefined,
+          unitPrice:
+            i.unitPrice !== undefined && i.unitPrice !== '' ? Number(i.unitPrice) : undefined,
         })),
       });
 
       if (res.success && res.data) {
+        showToast({
+          type: 'success',
+          title: lang === 'vi' ? 'Đã tạo phiếu nháp' : 'Draft Voucher Created',
+          message:
+            lang === 'vi'
+              ? `Đã tạo chứng từ ${res.data.documentCode}. Nhấn "Gửi phê duyệt" để trình Quản lý/Admin.`
+              : `Created voucher ${res.data.documentCode}. Click "Submit for Approval" to notify Manager/Admin.`,
+        });
         navigate(`/stock-documents/${res.data.id}`);
+      } else {
+        setError(res.error?.message || t('stockDocs.errSourceRequired'));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('stockDocs.errSourceRequired'));
@@ -174,9 +190,14 @@ export const StockDocumentCreatePage: React.FC = () => {
         <p>{t('stockDocs.createSubtitle')}</p>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div className="error-banner" role="alert">
+          <AlertCircle size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="form-card">
+      <form onSubmit={handleSubmit} className="form-card" noValidate>
         <h3 className="form-section-title">{t('stockDocs.sectionRouting')}</h3>
 
         <div className="form-grid">
@@ -260,102 +281,127 @@ export const StockDocumentCreatePage: React.FC = () => {
 
         <h3 className="form-section-title">{t('stockDocs.sectionItems')}</h3>
 
-        <table className="items-table">
-          <thead>
-            <tr>
-              <th style={{ width: '45%' }}>{t('stockDocs.colProductSku')}</th>
-              <th style={{ width: '20%' }}>{t('stockDocs.colQuantity')}</th>
-              {type === StockDocType.ADJUSTMENT && (
-                <th style={{ width: '25%' }}>{t('stockDocs.colAdjustmentDelta')}</th>
-              )}
-              {type === StockDocType.INBOUND && (
-                <th style={{ width: '25%' }}>{t('stockDocs.colUnitPrice')}</th>
-              )}
-              <th style={{ width: '10%' }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((row, idx) => (
-              <tr key={idx}>
-                <td>
-                  <select
-                    required
-                    value={row.variantId}
-                    onChange={(e) => handleItemChange(idx, 'variantId', e.target.value)}
-                  >
-                    <option value="">
-                      {allVariants.length === 0
-                        ? t('stockDocs.noSkusFoundOpt')
-                        : t('stockDocs.selectSkuPlaceholder')}
-                    </option>
-                    {allVariants.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        [{v.sku}] {v.productName} - {v.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={row.quantity}
-                    onChange={(e) =>
-                      handleItemChange(idx, 'quantity', parseInt(e.target.value, 10) || 1)
-                    }
-                  />
-                </td>
+        <div className="items-table-wrapper">
+          <table className="items-table">
+            <thead>
+              <tr>
+                <th className="col-sku">{t('stockDocs.colProductSku')}</th>
+                <th className="col-qty">{t('stockDocs.colQuantity')}</th>
                 {type === StockDocType.ADJUSTMENT && (
-                  <td>
-                    <input
-                      type="number"
-                      required
-                      placeholder="e.g. -2 or +5"
-                      value={row.adjustmentDelta ?? ''}
-                      onChange={(e) =>
-                        handleItemChange(
-                          idx,
-                          'adjustmentDelta',
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                    />
-                  </td>
+                  <th className="col-extra">{t('stockDocs.colAdjustmentDelta')}</th>
                 )}
                 {type === StockDocType.INBOUND && (
-                  <td>
+                  <th className="col-extra">{t('stockDocs.colUnitPrice')}</th>
+                )}
+                <th className="col-action"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="col-sku">
+                    <select
+                      required
+                      value={row.variantId}
+                      onChange={(e) => handleItemChange(idx, 'variantId', e.target.value)}
+                    >
+                      <option value="">
+                        {allVariants.length === 0
+                          ? t('stockDocs.noSkusFoundOpt')
+                          : t('stockDocs.selectSkuPlaceholder')}
+                      </option>
+                      {allVariants.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          [{v.sku}] {v.productName} - {v.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="col-qty">
                     <input
                       type="number"
-                      step="1"
-                      min="0"
-                      placeholder="0"
-                      value={row.unitPrice ?? ''}
-                      onChange={(e) =>
-                        handleItemChange(
-                          idx,
-                          'unitPrice',
-                          e.target.value ? parseFloat(e.target.value) : undefined
-                        )
-                      }
+                      min="1"
+                      required
+                      value={row.quantity}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          handleItemChange(idx, 'quantity', '');
+                          return;
+                        }
+                        const parsed = parseInt(raw, 10);
+                        handleItemChange(idx, 'quantity', Number.isNaN(parsed) ? '' : parsed);
+                      }}
+                      onBlur={() => {
+                        if (row.quantity === '' || Number(row.quantity) < 1) {
+                          handleItemChange(idx, 'quantity', 1);
+                        }
+                      }}
                     />
                   </td>
-                )}
-                <td style={{ textAlign: 'center' }}>
-                  <button
-                    type="button"
-                    className="btn-delete-row"
-                    title={t('common.delete')}
-                    disabled={items.length <= 1}
-                    onClick={() => handleRemoveItem(idx)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {type === StockDocType.ADJUSTMENT && (
+                    <td className="col-extra">
+                      <input
+                        type="number"
+                        required
+                        placeholder="e.g. -2 or +5"
+                        value={row.adjustmentDelta ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === '' || raw === '-') {
+                            handleItemChange(idx, 'adjustmentDelta', raw);
+                            return;
+                          }
+                          const parsed = parseInt(raw, 10);
+                          handleItemChange(
+                            idx,
+                            'adjustmentDelta',
+                            Number.isNaN(parsed) ? '' : parsed
+                          );
+                        }}
+                      />
+                    </td>
+                  )}
+                  {type === StockDocType.INBOUND && (
+                    <td className="col-extra">
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        placeholder="0"
+                        value={row.unitPrice ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === '') {
+                            handleItemChange(idx, 'unitPrice', '');
+                            return;
+                          }
+                          const parsed = parseFloat(raw);
+                          handleItemChange(
+                            idx,
+                            'unitPrice',
+                            Number.isNaN(parsed) ? '' : parsed
+                          );
+                        }}
+                      />
+                    </td>
+                  )}
+                  <td className="col-action">
+                    <button
+                      type="button"
+                      className="btn-delete-row"
+                      title={t('common.delete')}
+                      disabled={items.length <= 1}
+                      onClick={() => handleRemoveItem(idx)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div className="items-actions">
           <button type="button" className="btn-add-item" onClick={handleAddItem}>

@@ -66,6 +66,7 @@ export class AuthController {
         message: 'Login successful',
         data: {
           accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
           expiresIn: result.expiresIn,
           user: result.user,
         },
@@ -77,8 +78,8 @@ export class AuthController {
 
   refresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Prioritize HttpOnly cookie, fall back to request body for non-browser clients
-      const rawToken = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+      // Prioritize explicit tab refreshToken in body (for multi-tab role isolation), fall back to HttpOnly cookie
+      const rawToken = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE_NAME];
 
       if (!rawToken) {
         throw new BadRequestError('No refresh token provided');
@@ -96,6 +97,7 @@ export class AuthController {
         message: 'Token refreshed successfully',
         data: {
           accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
           expiresIn: result.expiresIn,
           user: result.user,
         },
@@ -108,7 +110,7 @@ export class AuthController {
 
   logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const rawToken = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+      const rawToken = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE_NAME];
       const userId = req.user?.id;
       const ip = req.ip || req.socket.remoteAddress;
 
