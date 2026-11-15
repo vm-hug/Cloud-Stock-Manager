@@ -29,20 +29,23 @@ All HTTP endpoints return responses structured with the standard ApiResponse env
 
 ## 2. Standard HTTP Status Codes
 
-- `200 OK`: Request succeeded.
-- `201 Created`: Resource successfully created.
-- `400 Bad Request`: Validation failure (Zod error details included).
-- `401 Unauthorized`: Missing, expired, or invalid JWT token / revoked session.
-- `403 Forbidden`: Authenticated user lacks permission/role (RBAC failure).
-- `404 Not Found`: Resource or endpoint does not exist.
-- `409 Conflict`: Business invariant failure (e.g. duplicate email, user already exists).
-- `429 Too Many Requests`: Rate limit threshold exceeded.
-- `500 Internal Server Error`: Unhandled server exception (sanitized in production).
-- `503 Service Unavailable`: Cloud readiness probe failed (Database unreachable).
+| Status Code | Meaning | Typical Cause |
+| :--- | :--- | :--- |
+| `200 OK` | Request succeeded | Standard read, update, or action response |
+| `201 Created` | Resource created | New entity persisted in PostgreSQL |
+| `202 Accepted` | Background job queued | Asynchronous bulk import enqueued via BullMQ |
+| `400 Bad Request` | Validation failure | Invalid request payload or query parameters (Zod details included) |
+| `401 Unauthorized` | Authentication failure | Missing, expired, or invalid JWT token / revoked session |
+| `403 Forbidden` | Authorization failure | Authenticated user lacks required role (`ADMIN`, `MANAGER`, `STAFF`) |
+| `404 Not Found` | Resource missing | Requested entity or endpoint does not exist |
+| `409 Conflict` | Business invariant violation | Duplicate email/SKU, self-approval attempt, or invalid state transition |
+| `429 Too Many Requests` | Rate limit exceeded | Too many requests within the configured time window |
+| `500 Internal Server Error` | Unhandled server exception | Unexpected runtime error (stack traces sanitized in production) |
+| `503 Service Unavailable` | Readiness probe failed | PostgreSQL or critical dependency is unreachable |
 
 ---
 
-## 3. Endpoints Implemented in Phase 1 & 2
+## 3. Endpoints Implemented in Phases 1–3
 
 ### 3.1 Cloud Health Probes & Monitoring
 - `GET /api/health/live`: Public liveness probe (Express process status).
