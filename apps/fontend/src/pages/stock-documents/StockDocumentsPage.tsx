@@ -68,6 +68,16 @@ export const StockDocumentsPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [page, search, typeFilter, statusFilter, selectedWh]);
 
+  useEffect(() => {
+    const onDocChanged = () => {
+      loadDocuments();
+    };
+    window.addEventListener('cloudstock:stock-document-changed', onDocChanged);
+    return () => {
+      window.removeEventListener('cloudstock:stock-document-changed', onDocChanged);
+    };
+  }, [page, search, typeFilter, statusFilter, selectedWh]);
+
   const getStatusLabel = (status: StockDocStatus) => {
     switch (status) {
       case StockDocStatus.DRAFT:

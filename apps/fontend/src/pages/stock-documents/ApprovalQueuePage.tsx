@@ -3,22 +3,23 @@ import { StockDocument, StockDocStatus, StockDocType } from '@cloud-stock/shared
 import { inventoryApi } from '../../features/inventory/inventory.api';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useI18n } from '../../features/i18n/I18nContext';
+import { useNotifications } from '../../features/notifications/NotificationContext';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Eye, AlertCircle } from 'lucide-react';
 import './ApprovalQueuePage.scss';
 
 export const ApprovalQueuePage: React.FC = () => {
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const { showToast } = useNotifications();
   const [pendingDocs, setPendingDocs] = useState<StockDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPendingDocs = async () => {
+  const loadPendingDocs = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
       const res = await inventoryApi.getDocuments({
         status: StockDocStatus.PENDING,
         limit: 50,
@@ -29,12 +30,19 @@ export const ApprovalQueuePage: React.FC = () => {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('approvals.emptyDesc'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadPendingDocs();
+    const onDocChanged = () => {
+      loadPendingDocs(true);
+    };
+    window.addEventListener('cloudstock:stock-document-changed', onDocChanged);
+    return () => {
+      window.removeEventListener('cloudstock:stock-document-changed', onDocChanged);
+    };
   }, []);
 
   const getTypeLabel = (type: StockDocType) => {
@@ -58,8 +66,32 @@ export const ApprovalQueuePage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.approveDocument(doc.id);
-      loadPendingDocs();
+      const res = await inventoryApi.approveDocument(doc.id);
+      if (!res.success) {
+        const rawMsg = res.error?.message || '';
+        const stockMatch = rawMsg.match(
+          /Insufficient stock for SKU \[([^\]]+)\] at warehouse \[([^\]]+)\]\.\s*Available:\s*(\d+),\s*Requested:\s*(\d+)/i
+        );
+        const displayMsg = stockMatch
+          ? lang === 'vi'
+            ? `Chống xuất âm: Không đủ tồn kho cho mã SKU [${stockMatch[1]}] tại kho [${stockMatch[2]}]. Tồn khả dụng: ${stockMatch[3]}, Yêu cầu xuất: ${stockMatch[4]}.`
+            : rawMsg
+          : rawMsg ||
+            (lang === 'vi'
+              ? 'Không thể phê duyệt phiếu kho.'
+              : 'Failed to approve stock voucher.');
+        setError(displayMsg);
+        return;
+      }
+      showToast({
+        type: 'success',
+        title: lang === 'vi' ? 'Đã phê duyệt & chốt tồn kho' : 'Voucher Approved & Posted',
+        message:
+          lang === 'vi'
+            ? `Chứng từ ${doc.documentCode} đã chuyển sang trạng thái ĐÃ GHI SỔ (POSTED).`
+            : `Voucher ${doc.documentCode} has been POSTED to inventory ledger.`,
+      });
+      loadPendingDocs(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('approvals.emptyDesc'));
     } finally {
@@ -74,8 +106,23 @@ export const ApprovalQueuePage: React.FC = () => {
     try {
       setActionLoading(true);
       setError(null);
-      await inventoryApi.rejectDocument(doc.id, reason);
-      loadPendingDocs();
+      const res = await inventoryApi.rejectDocument(doc.id, reason);
+      if (!res.success) {
+        setError(
+          res.error?.message ||
+            (lang === 'vi' ? 'Không thể từ chối phiếu kho.' : 'Failed to reject voucher.')
+        );
+        return;
+      }
+      showToast({
+        type: 'warning',
+        title: lang === 'vi' ? 'Đã từ chối phiếu kho' : 'Voucher Rejected',
+        message:
+          lang === 'vi'
+            ? `Đã từ chối chứng từ ${doc.documentCode}.`
+            : `Rejected voucher ${doc.documentCode}.`,
+      });
+      loadPendingDocs(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('approvals.emptyDesc'));
     } finally {
@@ -95,7 +142,21 @@ export const ApprovalQueuePage: React.FC = () => {
         </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div
+          className="error-banner"
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontWeight: 600,
+          }}
+        >
+          <AlertCircle size={17} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="table-container">
         <table>

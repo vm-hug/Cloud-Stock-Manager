@@ -74,6 +74,20 @@
     }
   }
 
+  .error-alert {
+    margin-bottom: v.$space-4;
+    padding: v.$space-3 v.$space-4;
+    background: var(--color-danger-bg);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: v.$radius-lg;
+    color: var(--color-danger-text);
+    font-size: v.$font-size-xs;
+    font-weight: v.$font-weight-semibold;
+    display: flex;
+    align-items: center;
+    gap: v.$space-2;
+  }
+
   .login-form {
     display: flex;
     flex-direction: column;
@@ -112,10 +126,21 @@
           border-radius: v.$radius-lg;
           color: v.$text-primary;
           font-size: v.$font-size-sm;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
           &:focus {
             border-color: v.$color-primary-500;
             box-shadow: 0 0 0 3px rgba(v.$color-primary-500, 0.25);
+          }
+        }
+
+        &.has-error input {
+          border-color: #ef4444;
+          background: rgba(239, 68, 68, 0.03);
+
+          &:focus {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
           }
         }
 
@@ -132,18 +157,26 @@
           }
         }
       }
-    }
 
-    .error-alert {
-      padding: v.$space-3 v.$space-4;
-      background: rgba(v.$color-danger-500, 0.15);
-      border: 1px solid rgba(v.$color-danger-500, 0.3);
-      border-radius: v.$radius-md;
-      color: #f87171;
-      font-size: v.$font-size-xs;
-      display: flex;
-      align-items: center;
-      gap: v.$space-2;
+      .password-input-wrapper.has-error .password-input-field {
+        border-color: #ef4444 !important;
+        background: rgba(239, 68, 68, 0.03);
+
+        &:focus {
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+        }
+      }
+
+      .field-error-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: #ef4444;
+        margin-top: 2px;
+        line-height: 1.35;
+      }
     }
 
     .submit-btn {

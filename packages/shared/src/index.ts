@@ -125,6 +125,7 @@ export interface UserProfile {
 // Auth Types
 export interface AuthResponse {
   accessToken: string;
+  refreshToken?: string;
   expiresIn: number;
   user: UserProfile;
 }

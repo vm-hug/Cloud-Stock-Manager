@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './features/auth/AuthContext';
 import { ThemeProvider } from './features/theme/ThemeContext';
 import { I18nProvider } from './features/i18n/I18nContext';
+import { NotificationProvider } from './features/notifications/NotificationContext';
 import { RootRedirect } from './features/auth/RootRedirect';
 import { PublicOnlyRoute } from './features/auth/PublicOnlyRoute';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
@@ -34,7 +35,8 @@ export const App: React.FC = () => {
       <I18nProvider>
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
+            <NotificationProvider>
+              <Routes>
           {/* Root entry: immediately redirects based on auth state and role */}
           <Route path="/" element={<RootRedirect />} />
 
@@ -86,9 +88,10 @@ export const App: React.FC = () => {
             </Route>
           </Route>
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+              {/* Catch-all redirect */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            </NotificationProvider>
           </AuthProvider>
         </BrowserRouter>
       </I18nProvider>

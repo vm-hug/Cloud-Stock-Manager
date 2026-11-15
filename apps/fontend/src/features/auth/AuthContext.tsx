@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { UserProfile, Role } from '@cloud-stock/shared';
 import { authApi } from './auth.api';
+import { api } from '../../lib/api';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -23,9 +24,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize session on page mount by attempting refresh with HttpOnly cookie
+  // Initialize session on page mount: prioritize tab-scoped accessToken first for multi-tab role isolation
   const initSession = useCallback(async () => {
     try {
+      if (api.getAccessToken()) {
+        const meRes = await authApi.getMe();
+        if (meRes.success && meRes.data) {
+          setUser(meRes.data);
+          return;
+        }
+      }
+
       const res = await authApi.refresh();
       if (res.success && res.data?.user) {
         setUser(res.data.user);
@@ -52,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.role]);
 
   const login = async (email: string, passwordPlain: string) => {
-    setIsLoading(true);
     try {
       const res = await authApi.login(email, passwordPlain);
       if (res.success && res.data?.user) {
@@ -68,8 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         success: false,
         error: err instanceof Error ? err.message : 'Unknown network error',
       };
-    } finally {
-      setIsLoading(false);
     }
   };
 

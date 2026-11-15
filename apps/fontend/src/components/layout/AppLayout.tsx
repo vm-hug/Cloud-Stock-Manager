@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useTheme } from '../../features/theme/ThemeContext';
 import { useI18n } from '../../features/i18n/I18nContext';
+import { useNotifications, AppNotificationItem } from '../../features/notifications/NotificationContext';
 import {
   Users,
   History,
@@ -26,6 +27,10 @@ import {
   ChevronDown,
   Menu,
   X,
+  Bell,
+  CheckCheck,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import './AppLayout.scss';
 
@@ -33,13 +38,17 @@ export const AppLayout: React.FC = () => {
   const { user, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { lang, toggleLang, t } = useI18n();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifMenuOpen, setNotifMenuOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'ALL' | 'UNREAD'>('ALL');
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notifMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setAvatarLoadFailed(false);
@@ -48,6 +57,7 @@ export const AppLayout: React.FC = () => {
   useEffect(() => {
     setMobileNavOpen(false);
     setUserMenuOpen(false);
+    setNotifMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -55,10 +65,61 @@ export const AppLayout: React.FC = () => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setUserMenuOpen(false);
       }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(event.target as Node)) {
+        setNotifMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  const filteredNotifications =
+    notifFilter === 'UNREAD' ? notifications.filter((n) => !n.read) : notifications;
+
+  const formatNotifTime = (iso: string) => {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return lang === 'vi' ? 'Vừa xong' : 'Just now';
+    if (mins < 60) return lang === 'vi' ? `${mins} phút trước` : `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return lang === 'vi' ? `${hours} giờ trước` : `${hours}h ago`;
+    return new Date(iso).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US');
+  };
+
+  const renderNotifIcon = (type: AppNotificationItem['type']) => {
+    switch (type) {
+      case 'PENDING_APPROVAL':
+        return (
+          <span className="notif-type-icon pending">
+            <Clock size={15} />
+          </span>
+        );
+      case 'DOCUMENT_APPROVED':
+        return (
+          <span className="notif-type-icon approved">
+            <CheckCircle2 size={15} />
+          </span>
+        );
+      case 'DOCUMENT_REJECTED':
+        return (
+          <span className="notif-type-icon rejected">
+            <XCircle size={15} />
+          </span>
+        );
+      case 'LOW_STOCK_ALERT':
+        return (
+          <span className="notif-type-icon alert">
+            <AlertTriangle size={15} />
+          </span>
+        );
+      default:
+        return (
+          <span className="notif-type-icon info">
+            <Bell size={15} />
+          </span>
+        );
+    }
+  };
 
   const handleLogout = async () => {
     setUserMenuOpen(false);
@@ -257,6 +318,110 @@ export const AppLayout: React.FC = () => {
           </div>
 
           <div className="topbar-right">
+            {/* Notification Bell + Badge + Dropdown right next to Language Switcher */}
+            <div className="header-notif-wrapper" ref={notifMenuRef}>
+              <button
+                type="button"
+                className={`header-control-btn icon-only notif-trigger ${
+                  notifMenuOpen ? 'active' : ''
+                } ${unreadCount > 0 ? 'has-unread' : ''}`}
+                onClick={() => setNotifMenuOpen((prev) => !prev)}
+                aria-label={lang === 'vi' ? 'Thông báo' : 'Notifications'}
+                title={lang === 'vi' ? 'Thông báo hệ thống' : 'System Notifications'}
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="notif-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
+              </button>
+
+              {notifMenuOpen && (
+                <div className="header-notif-dropdown" role="dialog">
+                  <div className="notif-dropdown-header">
+                    <div className="notif-title-row">
+                      <span className="notif-title">
+                        {lang === 'vi' ? 'Thông báo' : 'Notifications'}
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="notif-unread-pill">
+                          {unreadCount} {lang === 'vi' ? 'mới' : 'new'}
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        className="notif-mark-all-btn"
+                        onClick={markAllAsRead}
+                      >
+                        <CheckCheck size={13} />
+                        <span>{lang === 'vi' ? 'Đọc tất cả' : 'Mark all read'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="notif-filter-tabs">
+                    <button
+                      type="button"
+                      className={notifFilter === 'ALL' ? 'active' : ''}
+                      onClick={() => setNotifFilter('ALL')}
+                    >
+                      {lang === 'vi' ? 'Tất cả' : 'All'} ({notifications.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={notifFilter === 'UNREAD' ? 'active' : ''}
+                      onClick={() => setNotifFilter('UNREAD')}
+                    >
+                      {lang === 'vi' ? 'Chưa đọc' : 'Unread'} ({unreadCount})
+                    </button>
+                  </div>
+
+                  <div className="notif-list">
+                    {filteredNotifications.length === 0 ? (
+                      <div className="notif-empty">
+                        <Bell size={24} />
+                        <p>
+                          {lang === 'vi'
+                            ? 'Hiện không có thông báo nào.'
+                            : 'No notifications right now.'}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredNotifications.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          className={`notif-item ${!n.read ? 'unread' : ''}`}
+                          onClick={() => {
+                            markAsRead(n.id);
+                            setNotifMenuOpen(false);
+                            navigate(n.link);
+                          }}
+                        >
+                          {renderNotifIcon(n.type)}
+                          <div className="notif-item-body">
+                            <div className="notif-item-top">
+                              <span className="notif-item-title">
+                                {lang === 'vi' ? n.titleVi : n.titleEn}
+                              </span>
+                              <span className="notif-item-time">
+                                {formatNotifTime(n.createdAt)}
+                              </span>
+                            </div>
+                            <p className="notif-item-msg">
+                              {lang === 'vi' ? n.messageVi : n.messageEn}
+                            </p>
+                          </div>
+                          {!n.read && <span className="notif-unread-dot" />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               className="header-control-btn"
