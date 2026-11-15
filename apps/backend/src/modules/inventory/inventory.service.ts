@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { StockDocStatus, StockDocType, AuditAction, Role } from '@cloud-stock/shared';
+import { StockDocStatus, AuditAction, Role } from '@cloud-stock/shared';
 import { inventoryRepository, InventoryRepository } from './inventory.repository';
 import {
   BalanceQueryInput,

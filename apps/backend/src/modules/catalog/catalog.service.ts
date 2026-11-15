@@ -473,7 +473,6 @@ export class CatalogService {
     }
 
     // Security validation: Verify publicId namespace belongs to this product
-    const expectedPrefix = `cloud-stock/products/${productId}`;
     if (!input.publicId.includes(productId)) {
       throw new BadRequestError('Image publicId does not belong to this product namespace');
     }
