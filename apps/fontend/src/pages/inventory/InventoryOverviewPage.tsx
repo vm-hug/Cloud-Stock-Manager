@@ -73,7 +73,7 @@ export const InventoryOverviewPage: React.FC = () => {
     open: boolean;
     warehouseId: string;
     variantId: string;
-    quantity: number;
+    quantity: number | '';
     note: string;
   }>({
     open: false,
@@ -188,6 +188,19 @@ export const InventoryOverviewPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [page, search, selectedWh, selectedStatus]);
 
+  useEffect(() => {
+    const onRealtimeUpdate = () => {
+      loadBalances();
+      loadKpiSummary();
+    };
+    window.addEventListener('cloudstock:inventory-changed', onRealtimeUpdate);
+    window.addEventListener('cloudstock:stock-document-changed', onRealtimeUpdate);
+    return () => {
+      window.removeEventListener('cloudstock:inventory-changed', onRealtimeUpdate);
+      window.removeEventListener('cloudstock:stock-document-changed', onRealtimeUpdate);
+    };
+  }, [page, search, selectedWh, selectedStatus]);
+
   const handleExport = async (format: 'csv' | 'xlsx') => {
     try {
       await inventoryApi.downloadExport({
@@ -230,7 +243,13 @@ export const InventoryOverviewPage: React.FC = () => {
   };
 
   const handleSubmitQuickInbound = async (autoSubmit: boolean) => {
-    if (!inboundModal.warehouseId || !inboundModal.variantId || inboundModal.quantity < 1) {
+    const parsedQty = Number(inboundModal.quantity);
+    if (
+      !inboundModal.warehouseId ||
+      !inboundModal.variantId ||
+      !Number.isFinite(parsedQty) ||
+      parsedQty < 1
+    ) {
       setInboundError(t('inventory.savingError'));
       return;
     }
@@ -245,7 +264,7 @@ export const InventoryOverviewPage: React.FC = () => {
         items: [
           {
             variantId: inboundModal.variantId,
-            quantity: inboundModal.quantity,
+            quantity: parsedQty,
           },
         ],
       });
@@ -730,12 +749,23 @@ export const InventoryOverviewPage: React.FC = () => {
                   min={1}
                   required
                   value={inboundModal.quantity}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setInboundModal({ ...inboundModal, quantity: '' });
+                      return;
+                    }
+                    const parsed = parseInt(raw, 10);
                     setInboundModal({
                       ...inboundModal,
-                      quantity: Math.max(1, parseInt(e.target.value, 10) || 1),
-                    })
-                  }
+                      quantity: Number.isNaN(parsed) ? '' : parsed,
+                    });
+                  }}
+                  onBlur={() => {
+                    if (inboundModal.quantity === '' || Number(inboundModal.quantity) < 1) {
+                      setInboundModal({ ...inboundModal, quantity: 1 });
+                    }
+                  }}
                 />
               </div>
 

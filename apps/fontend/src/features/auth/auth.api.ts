@@ -15,27 +15,43 @@ export const authApi = {
     });
     if (res.success && res.data?.accessToken) {
       api.setAccessToken(res.data.accessToken);
+      if (res.data.refreshToken) {
+        api.setRefreshToken(res.data.refreshToken);
+      }
     }
     return res;
   },
 
   refresh: async (): Promise<ApiResponse<AuthResponse>> => {
-    const res = await api.post<AuthResponse>('/v1/auth/refresh');
+    const tabRefreshToken = api.getRefreshToken();
+    const res = await api.post<AuthResponse>(
+      '/v1/auth/refresh',
+      tabRefreshToken ? { refreshToken: tabRefreshToken } : undefined
+    );
     if (res.success && res.data?.accessToken) {
       api.setAccessToken(res.data.accessToken);
+      if (res.data.refreshToken) {
+        api.setRefreshToken(res.data.refreshToken);
+      }
     }
     return res;
   },
 
   logout: async (): Promise<ApiResponse<void>> => {
-    const res = await api.post<void>('/v1/auth/logout');
+    const tabRefreshToken = api.getRefreshToken();
+    const res = await api.post<void>(
+      '/v1/auth/logout',
+      tabRefreshToken ? { refreshToken: tabRefreshToken } : undefined
+    );
     api.setAccessToken(null);
+    api.setRefreshToken(null);
     return res;
   },
 
   logoutAll: async (): Promise<ApiResponse<void>> => {
     const res = await api.post<void>('/v1/auth/logout-all');
     api.setAccessToken(null);
+    api.setRefreshToken(null);
     return res;
   },
 

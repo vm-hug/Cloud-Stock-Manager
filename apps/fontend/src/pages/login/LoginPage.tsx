@@ -11,6 +11,8 @@ import './LoginPage.scss';
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,25 +24,75 @@ export const LoginPage: React.FC = () => {
 
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
+  const validateFields = (): boolean => {
+    let valid = true;
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setEmailError(
+        lang === 'vi'
+          ? 'Vui lòng nhập địa chỉ email tài khoản.'
+          : 'Please enter your account email address.'
+      );
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setEmailError(
+        lang === 'vi'
+          ? 'Định dạng email không hợp lệ (ví dụ: admin@gmail.com).'
+          : 'Invalid email format (e.g. admin@gmail.com).'
+      );
+      valid = false;
+    } else {
+      setEmailError(null);
+    }
+
+    if (!password) {
+      setPasswordError(
+        lang === 'vi' ? 'Vui lòng nhập mật khẩu đăng nhập.' : 'Please enter your password.'
+      );
+      valid = false;
+    } else if (password.length < 6) {
+      setPasswordError(
+        lang === 'vi'
+          ? 'Mật khẩu phải có tối thiểu 6 ký tự.'
+          : 'Password must be at least 6 characters.'
+      );
+      valid = false;
+    } else {
+      setPasswordError(null);
+    }
+
+    return valid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setErrorMsg(t('auth.missingCredentials'));
+    setErrorMsg(null);
+
+    if (!validateFields()) {
       return;
     }
 
-    setErrorMsg(null);
     setIsSubmitting(true);
 
     try {
-      const res = await login(email, password);
+      const res = await login(email.trim(), password);
       if (res.success) {
         navigate(getSafeRedirectPath(from, res.role), { replace: true });
       } else {
-        setErrorMsg(res.error || t('auth.loginFailed'));
+        const localizedErr =
+          res.error && res.error.toLowerCase().includes('invalid')
+            ? lang === 'vi'
+              ? 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.'
+              : 'Incorrect email or password. Please check and try again.'
+            : res.error || t('auth.loginFailed');
+        setErrorMsg(localizedErr);
+        setPasswordError(localizedErr);
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : t('auth.loginFailed'));
+      const fallback = err instanceof Error ? err.message : t('auth.loginFailed');
+      setErrorMsg(fallback);
+      setPasswordError(fallback);
     } finally {
       setIsSubmitting(false);
     }
@@ -84,36 +136,57 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <div className="form-group">
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
+          <div className={`form-group ${emailError ? 'has-error' : ''}`}>
             <label htmlFor="email">{t('auth.emailLabel')}</label>
-            <div className="input-wrapper">
+            <div className={`input-wrapper ${emailError ? 'has-error' : ''}`}>
               <Mail size={16} className="field-icon" />
               <input
                 id="email"
                 type="email"
-                placeholder="name@company.com"
+                placeholder="admin@gmail.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                  if (errorMsg) setErrorMsg(null);
+                }}
                 autoComplete="email"
-                required
+                aria-invalid={Boolean(emailError)}
               />
             </div>
+            {emailError && (
+              <span className="field-error-text" role="alert">
+                <AlertCircle size={13} />
+                <span>{emailError}</span>
+              </span>
+            )}
           </div>
 
-          <div className="form-group">
+          <div className={`form-group ${passwordError ? 'has-error' : ''}`}>
             <label htmlFor="password">{t('auth.passwordLabel')}</label>
             <PasswordInput
               id="password"
               leftIcon={<Lock size={16} />}
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              wrapperClassName={passwordError ? 'has-error' : ''}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError(null);
+                if (errorMsg) setErrorMsg(null);
+              }}
               autoComplete="current-password"
               showLabel={t('common.showPassword')}
               hideLabel={t('common.hidePassword')}
-              required
+              aria-invalid={Boolean(passwordError)}
             />
+            {passwordError && (
+              <span className="field-error-text" role="alert">
+                <AlertCircle size={13} />
+                <span>{passwordError}</span>
+              </span>
+            )}
           </div>
 
           <button type="submit" className="submit-btn" disabled={isSubmitting}>

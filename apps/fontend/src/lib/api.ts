@@ -6,8 +6,11 @@
 import { ApiResponse } from '@cloud-stock/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const TAB_ACCESS_TOKEN_KEY = 'cs_tab_access_token';
+const TAB_REFRESH_TOKEN_KEY = 'cs_tab_refresh_token';
 
 let inMemoryAccessToken: string | null = null;
+let inMemoryRefreshToken: string | null = null;
 let isRefreshing = false;
 let refreshSubscribers: ((token: string) => void)[] = [];
 
@@ -18,6 +21,52 @@ function onRefreshed(token: string) {
 
 function addRefreshSubscriber(cb: (token: string) => void) {
   refreshSubscribers.push(cb);
+}
+
+export interface GlobalToastEventDetail {
+  type: 'success' | 'error' | 'warning' | 'info';
+  title?: string;
+  message: string;
+  durationMs?: number;
+}
+
+export function emitGlobalToast(detail: GlobalToastEventDetail): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent<GlobalToastEventDetail>('cloudstock:toast', { detail }));
+  }
+}
+
+export function localizeBackendErrorMessage(rawMessage: string): string {
+  const lang =
+    typeof window !== 'undefined' ? localStorage.getItem('cloud_stock_lang') || 'vi' : 'vi';
+  if (lang !== 'vi') return rawMessage;
+
+  // Insufficient stock: "Insufficient stock for SKU [KC-K2-RED-RGB] at warehouse [WH-XUANPHU]. Available: 5, Requested: 8."
+  const insuffMatch = rawMessage.match(
+    /Insufficient stock for SKU \[([^\]]+)\] at warehouse \[([^\]]+)\]\.\s*Available:\s*(\d+),\s*Requested:\s*(\d+)/i
+  );
+  if (insuffMatch) {
+    const [, sku, wh, avail, req] = insuffMatch;
+    return `Không đủ tồn kho cho mã SKU [${sku}] tại kho [${wh}]. Tồn khả dụng: ${avail}, Yêu cầu xuất: ${req}.`;
+  }
+
+  if (/Invalid email or password/i.test(rawMessage)) {
+    return 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+  }
+
+  if (/creator cannot approve their own/i.test(rawMessage)) {
+    return 'Người tạo phiếu không được phép tự phê duyệt phiếu của chính mình.';
+  }
+
+  if (/Missing or malformed Authorization header/i.test(rawMessage)) {
+    return 'Phiên đăng nhập đã hết hạn hoặc thiếu xác thực. Vui lòng đăng nhập lại.';
+  }
+
+  if (/Duplicate SKU\/variant is not allowed/i.test(rawMessage)) {
+    return 'Không được phép chọn trùng mã SKU trên nhiều dòng trong cùng một phiếu kho.';
+  }
+
+  return rawMessage;
 }
 
 class ApiClient {
@@ -31,15 +80,69 @@ class ApiClient {
     return this.baseUrl;
   }
 
+  public getSocketOrigin(): string {
+    return this.baseUrl.replace(/\/api\/?$/, '');
+  }
+
   public getAccessToken(): string | null {
-    return inMemoryAccessToken;
+    if (inMemoryAccessToken) return inMemoryAccessToken;
+    try {
+      const saved = sessionStorage.getItem(TAB_ACCESS_TOKEN_KEY);
+      if (saved) {
+        inMemoryAccessToken = saved;
+        return saved;
+      }
+    } catch {
+      // Ignore storage read errors
+    }
+    return null;
   }
 
   public setAccessToken(token: string | null): void {
     inMemoryAccessToken = token;
+    try {
+      if (token) {
+        sessionStorage.setItem(TAB_ACCESS_TOKEN_KEY, token);
+      } else {
+        sessionStorage.removeItem(TAB_ACCESS_TOKEN_KEY);
+      }
+    } catch {
+      // Ignore storage write errors
+    }
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+  public getRefreshToken(): string | null {
+    if (inMemoryRefreshToken) return inMemoryRefreshToken;
+    try {
+      const saved = sessionStorage.getItem(TAB_REFRESH_TOKEN_KEY);
+      if (saved) {
+        inMemoryRefreshToken = saved;
+        return saved;
+      }
+    } catch {
+      // Ignore storage read errors
+    }
+    return null;
+  }
+
+  public setRefreshToken(token: string | null): void {
+    inMemoryRefreshToken = token;
+    try {
+      if (token) {
+        sessionStorage.setItem(TAB_REFRESH_TOKEN_KEY, token);
+      } else {
+        sessionStorage.removeItem(TAB_REFRESH_TOKEN_KEY);
+      }
+    } catch {
+      // Ignore storage write errors
+    }
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const headers = new Headers(options.headers || {});
 
@@ -47,16 +150,16 @@ class ApiClient {
       headers.set('Content-Type', 'application/json');
     }
 
-    // Attach in-memory JWT Access Token
-    if (inMemoryAccessToken && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${inMemoryAccessToken}`);
+    const currentToken = this.getAccessToken();
+    if (currentToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${currentToken}`);
     }
 
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include', // Automatically send & receive HttpOnly cookies
+        credentials: 'include',
       });
 
       // Handle 401 Unauthorized with automatic refresh token rotation
@@ -69,21 +172,32 @@ class ApiClient {
         if (!isRefreshing) {
           isRefreshing = true;
           try {
+            const tabRefresh = this.getRefreshToken();
             const refreshRes = await fetch(`${this.baseUrl}/v1/auth/refresh`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
+              body: tabRefresh ? JSON.stringify({ refreshToken: tabRefresh }) : undefined,
             });
 
             if (refreshRes.ok) {
               const refreshData = await refreshRes.json();
               const newToken = refreshData?.data?.accessToken;
+              const newRefresh = refreshData?.data?.refreshToken;
               if (newToken) {
                 this.setAccessToken(newToken);
+                if (newRefresh) {
+                  this.setRefreshToken(newRefresh);
+                }
                 isRefreshing = false;
                 onRefreshed(newToken);
-                // Retry the original request with new token
-                return this.request<T>(endpoint, options, retryCount + 1);
+                const retryHeaders = new Headers(options.headers || {});
+                retryHeaders.set('Authorization', `Bearer ${newToken}`);
+                return this.request<T>(
+                  endpoint,
+                  { ...options, headers: retryHeaders },
+                  retryCount + 1
+                );
               }
             }
           } catch {
@@ -92,13 +206,16 @@ class ApiClient {
             isRefreshing = false;
           }
 
-          // If refresh failed, reset token and propagate 401
           this.setAccessToken(null);
+          this.setRefreshToken(null);
         } else {
-          // If already refreshing, wait for the token
           return new Promise<ApiResponse<T>>((resolve) => {
-            addRefreshSubscriber(() => {
-              resolve(this.request<T>(endpoint, options, retryCount + 1));
+            addRefreshSubscriber((freshToken) => {
+              const retryHeaders = new Headers(options.headers || {});
+              retryHeaders.set('Authorization', `Bearer ${freshToken}`);
+              resolve(
+                this.request<T>(endpoint, { ...options, headers: retryHeaders }, retryCount + 1)
+              );
             });
           });
         }
@@ -107,11 +224,32 @@ class ApiClient {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        const rawErrMsg =
+          data?.error?.message ||
+          (typeof data?.message === 'string' ? data.message : '') ||
+          response.statusText ||
+          'Request failed';
+        const localizedMsg = localizeBackendErrorMessage(rawErrMsg);
+
+        const method = (options.method || 'GET').toUpperCase();
+        const isSilentAuthProbe =
+          endpoint.includes('/auth/refresh') || endpoint.includes('/auth/logout');
+
+        if (method !== 'GET' && !isSilentAuthProbe) {
+          emitGlobalToast({
+            type: 'error',
+            message: localizedMsg,
+            durationMs: 3000,
+          });
+        }
+
         return {
           success: false,
           error: {
-            code: data?.error?.code || `HTTP_${response.status}`,
-            message: data?.error?.message || response.statusText || 'Request failed',
+            code:
+              data?.error?.code ||
+              (typeof data?.error === 'string' ? data.error : `HTTP_${response.status}`),
+            message: localizedMsg,
             details: data?.error?.details,
           },
         };
@@ -119,11 +257,12 @@ class ApiClient {
 
       return data as ApiResponse<T>;
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown network error';
       return {
         success: false,
         error: {
           code: 'NETWORK_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown network error',
+          message: msg,
         },
       };
     }
@@ -149,7 +288,11 @@ class ApiClient {
     });
   }
 
-  public patch<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<ApiResponse<T>> {
+  public patch<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestInit
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
