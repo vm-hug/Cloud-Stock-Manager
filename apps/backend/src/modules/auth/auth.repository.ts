@@ -1,12 +1,27 @@
 import { prisma } from '../../config/db';
 
+/**
+ * Data access layer for user authentication and refresh session persistence via Prisma.
+ */
 export class AuthRepository {
+  /**
+   * Finds a user record by unique email address (includes `passwordHash` for login verification).
+   *
+   * @param email - User email address
+   * @returns Full Prisma `User` record or `null`
+   */
   async findUserByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
     });
   }
 
+  /**
+   * Retrieves a sanitized user profile by ID without exposing `passwordHash`.
+   *
+   * @param id - User UUID
+   * @returns Safe user projection or `null`
+   */
   async findUserById(id: string) {
     return prisma.user.findUnique({
       where: { id },

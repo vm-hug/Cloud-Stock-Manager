@@ -37,9 +37,24 @@ export interface LoginResult {
   };
 }
 
+/**
+ * Handles authentication, refresh token rotation, session revocation,
+ * and user avatar lifecycle operations.
+ */
 export class AuthService {
   constructor(private repo: AuthRepository = authRepository) {}
 
+  /**
+   * Authenticates a user by email and password, creates a refresh session,
+   * and issues a short-lived JWT access token alongside a refresh token.
+   *
+   * @param email - User's login email address
+   * @param passwordPlain - Plaintext password verified against bcrypt hash
+   * @param ipAddress - Optional client IP address for audit logging
+   * @param userAgent - Optional client User-Agent string stored on the session
+   * @returns Access token, refresh token, expiration duration, and sanitized user profile
+   * @throws {UnauthorizedError} When credentials are invalid or the account is inactive
+   */
   async login(
     email: string,
     passwordPlain: string,

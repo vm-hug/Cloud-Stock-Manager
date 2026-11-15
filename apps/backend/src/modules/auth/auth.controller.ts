@@ -7,9 +7,19 @@ import { BadRequestError } from '../../common/errors/appError';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 
+/**
+ * HTTP adapter for authentication endpoints (`/api/v1/auth`).
+ * Manages HttpOnly refresh token cookies and delegates auth logic to `AuthService`.
+ */
 export class AuthController {
   constructor(private service: AuthService = authService) {}
 
+  /**
+   * Stores the rotated refresh token in an HttpOnly cookie scoped to `/api/v1/auth`.
+   *
+   * @param res - Express response object
+   * @param refreshToken - Signed refresh JWT string
+   */
   private setRefreshCookie(res: Response, refreshToken: string) {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
@@ -20,6 +30,11 @@ export class AuthController {
     });
   }
 
+  /**
+   * Clears the refresh token cookie from the client browser.
+   *
+   * @param res - Express response object
+   */
   private clearRefreshCookie(res: Response) {
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
@@ -29,6 +44,13 @@ export class AuthController {
     });
   }
 
+  /**
+   * Authenticates a user with email/password and sets the refresh token cookie.
+   *
+   * @param req - Express request containing `LoginInput` in `req.body`
+   * @param res - Express response returning access token and user profile
+   * @param next - Express error-forwarding middleware
+   */
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { email, password } = req.body as LoginInput;

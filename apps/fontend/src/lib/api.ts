@@ -20,6 +20,10 @@ function addRefreshSubscriber(cb: (token: string) => void) {
   refreshSubscribers.push(cb);
 }
 
+/**
+ * Centralized HTTP client wrapping `fetch` with in-memory JWT attachment,
+ * HttpOnly cookie credentials, and concurrent 401 refresh-token rotation.
+ */
 class ApiClient {
   private baseUrl: string;
 
@@ -27,18 +31,42 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  /**
+   * Returns the configured API base URL.
+   *
+   * @returns Base URL string (e.g., `http://localhost:5001/api`)
+   */
   public getBaseUrl(): string {
     return this.baseUrl;
   }
 
+  /**
+   * Returns the current in-memory JWT access token, if any.
+   *
+   * @returns Access token string or `null`
+   */
   public getAccessToken(): string | null {
     return inMemoryAccessToken;
   }
 
+  /**
+   * Updates the in-memory JWT access token used for `Authorization` headers.
+   *
+   * @param token - New access token or `null` to clear authentication state
+   */
   public setAccessToken(token: string | null): void {
     inMemoryAccessToken = token;
   }
 
+  /**
+   * Executes an HTTP request with automatic `401 Unauthorized` token refresh retry.
+   *
+   * @typeParam T - Expected `data` payload type in `ApiResponse<T>`
+   * @param endpoint - Relative API endpoint path
+   * @param options - Standard `fetch` request options
+   * @param retryCount - Internal retry counter to prevent infinite refresh loops
+   * @returns Normalized `ApiResponse<T>` envelope
+   */
   private async request<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const headers = new Headers(options.headers || {});

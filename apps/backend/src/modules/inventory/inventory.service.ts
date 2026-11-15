@@ -18,6 +18,10 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '.
 import { auditService } from '../audit/audit.service';
 import { prisma } from '../../config/db';
 
+/**
+ * Core business logic for warehouse management, real-time inventory balances,
+ * ACID stock document posting with pessimistic locking, and inventory exports.
+ */
 export class InventoryService {
   constructor(private repo: InventoryRepository = inventoryRepository) {}
 
@@ -25,6 +29,15 @@ export class InventoryService {
   // WAREHOUSES
   // ========================================================
 
+  /**
+   * Creates a new physical warehouse after verifying code uniqueness, and records an audit log.
+   *
+   * @param input - Validated warehouse creation payload
+   * @param actorId - Authenticated user ID performing the action
+   * @param ipAddress - Optional client IP address for audit trail
+   * @returns Newly created `Warehouse` record
+   * @throws {ConflictError} If a warehouse with the same code already exists
+   */
   async createWarehouse(input: CreateWarehouseInput, actorId: string, ipAddress?: string) {
     const existing = await this.repo.findWarehouseByCode(input.code);
     if (existing) {
@@ -84,6 +97,18 @@ export class InventoryService {
     return updated;
   }
 
+  /**
+   * Toggles a warehouse's active status while enforcing deactivation invariants:
+   * a warehouse cannot be deactivated if it holds positive stock or pending documents.
+   *
+   * @param id - Target warehouse UUID
+   * @param isActive - Desired active state
+   * @param actorId - Authenticated user ID performing the status change
+   * @param ipAddress - Optional client IP address for audit trail
+   * @returns Updated `Warehouse` record
+   * @throws {NotFoundError} If the warehouse does not exist
+   * @throws {ConflictError} If deactivating a warehouse with positive stock or pending documents
+   */
   async updateWarehouseStatus(id: string, isActive: boolean, actorId: string, ipAddress?: string) {
     const warehouse = await this.repo.findWarehouseById(id);
     if (!warehouse) {
